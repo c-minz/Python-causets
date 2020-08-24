@@ -18,8 +18,6 @@ The class 'EmbeddedCauset' extends 'Causet' and is able to handle the coordinate
 ## Currently under construction:
 1. Visualization of generic causets as (Hasse) diagrams
 2. Converting the causets to a causal or link matrix
-3. Generating causets from a data file (importing)
-4. Saving causets to a data file (exporting)
 
 ## Further development plans:
 1. Methods for spacetime reconstruction

@@ -8,8 +8,8 @@ from __future__ import annotations
 from typing import Set, List, Iterable, Union
 import numpy as np
 from numpy.random import default_rng
-from events import CausetEvent
-from embeddedcausets import EmbeddedCauset
+from event import CausetEvent
+from embeddedcauset import EmbeddedCauset
 
 
 class SprinkledCauset(EmbeddedCauset):
@@ -25,26 +25,17 @@ class SprinkledCauset(EmbeddedCauset):
         spacetime subset with dimension 'dim' of at least 1. 
 
         Keywords 'shape' and 'spacetime' are handled by the super 
-        class EmbeddedCauset before events are sprinkled.
+        class EmbeddedCauset before event are sprinkled.
 
         'card': int
-        Number of sprinkled events.
+        Number of sprinkled event.
 
         'intensity': float
         Sprinkling intensity parameter, the expected number of 
-        sprinkled events.
+        sprinkled event.
         '''
         # initialise shape and spacetime with super class:
-        super_kwargs = {}
-        try:
-            super_kwargs['shape'] = kwargs['shape']
-        except KeyError:
-            pass
-        try:
-            super_kwargs['spacetime'] = kwargs['spacetime']
-        except KeyError:
-            pass
-        super().__init__(dim, **super_kwargs)
+        super().__init__(dim, **kwargs)
         # sprinkle:
         self._intensity = 0.0
         try:
@@ -59,8 +50,8 @@ class SprinkledCauset(EmbeddedCauset):
     def Intensity(self) -> float:
         '''
         Returns the sprinkling intensity, which is the expected 
-        number of sprinkled events. The exact number of sprinkled 
-        events is given by the property 'Card'.
+        number of sprinkled event. The exact number of sprinkled 
+        event is given by the property 'Card'.
         '''
         return self._intensity
 
@@ -104,43 +95,51 @@ class SprinkledCauset(EmbeddedCauset):
                     self._shape_params['edge'] / 2
             for i in range(count):
                 coords[i, :] = rng.uniform(low, high)
-        elif self._shape_name in ('ball', 'cylinder', 'bicone'):
+        elif self._shape_name in ('ball', 'cylinder', 'diamond'):
             # Create circle based sprinkle:
             isCylinder: bool = self._shape_name == 'cylinder'
-            isBicone: bool = self._shape_name == 'bicone'
+            isDiamond: bool = self._shape_name == 'diamond'
             d: int = self.Dim
             b_r: float = self._shape_params['radius']
-            b_dstart: int = 0 if self._shape_name == 'ball' else 1
-            b_d: int = d - b_dstart
-            if isCylinder:
-                time_low: float = self._shape_center[0] - \
-                    self._shape_params['duration'] / 2
-                time_high: float = self._shape_center[0] + \
-                    self._shape_params['duration'] / 2
-            # pick 'count' random coordinate tuples uniformly:
-            for i in range(count):
-                # get coordinates on sphere using normal distribution:
-                coord: np.ndarray = rng.standard_normal(size=(1, b_d))
-                r: float = np.sqrt(sum(np.square(coord)))
-                r_scaling: float = rng.uniform()**(1.0 / b_d)
-                if isBicone:
+            if (d == 2) and isDiamond:
+                # pick `count` random coordinate tuples uniformly:
+                uv: np.ndarray = rng.uniform(low=-1.0, high=1.0,
+                                             size=(count, 2))
+                coords[:, 0] = uv[:, 0] + uv[:, 1]
+                coords[:, 1] = uv[:, 0] - uv[:, 1]
+                coords *= b_r / 2
+            else:
+                b_dstart: int = 0 if self._shape_name == 'ball' else 1
+                b_d: int = d - b_dstart
+                if isCylinder:
                     # set time coordinate:
-                    h_squeeze: float = rng.uniform()**(1.0 / d)
-                    h_sign: float = np.sign(
-                        rng.uniform(low=-1.0, high=1.0))
-                    coords[i, 0] = h_sign * (1 - h_squeeze) * b_r
-                    # adjust scaling:
-                    r_scaling *= h_squeeze
-                elif isCylinder:
-                    # set time coordinate:
-                    coords[i, 0] = rng.uniform(time_low, time_high)
-                coords[i, b_dstart:] = (r_scaling * b_r / r) * coord
+                    time_low: float = self._shape_center[0] - \
+                        self._shape_params['duration'] / 2
+                    time_high: float = self._shape_center[0] + \
+                        self._shape_params['duration'] / 2
+                    coords[:, 0] = rng.uniform(time_low, time_high,
+                                               size=(count,))
+                # pick `count` random coordinate tuples uniformly:
+                for i in range(count):
+                    # get coordinates on sphere using normal distribution:
+                    coord: np.ndarray = rng.standard_normal(size=(b_d,))
+                    r: float = np.sqrt(sum(np.square(coord)))
+                    r_scaling: float = rng.uniform()**(1.0 / b_d)
+                    if isDiamond:
+                        # set time coordinate:
+                        h_squeeze: float = rng.uniform()**(1.0 / d)
+                        h_sign: float = np.sign(
+                            rng.uniform(low=-1.0, high=1.0))
+                        coords[i, 0] = h_sign * (1 - h_squeeze) * b_r
+                        # adjust scaling:
+                        r_scaling *= h_squeeze
+                    coords[i, b_dstart:] = (r_scaling * b_r / r) * coord
         return coords
 
     def sprinkle(self, count: int,
                  rng=default_rng()) -> Set[CausetEvent]:
         '''
-        Creates a fixed number of new events by sprinkling 
+        Creates a fixed number of new event by sprinkling 
         into the shape.
         '''
         if count < 0:
@@ -153,7 +152,7 @@ class SprinkledCauset(EmbeddedCauset):
     def intensify(self, intensity: float,
                   rng=default_rng()) -> Set[CausetEvent]:
         '''
-        Creates an expected number of new events by sprinkling 
+        Creates an expected number of new event by sprinkling 
         into the shape. The expected number is determined by the 
         Poisson process with the given 'intensity' parameter.
         '''

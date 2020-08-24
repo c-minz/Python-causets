@@ -6,8 +6,10 @@ Created on 20 Jul 2020
 '''
 from __future__ import annotations
 import unittest
-from causets import Causet
-from embeddedcausets import EmbeddedCauset
+from causet import Causet
+from embeddedcauset import EmbeddedCauset
+import numpy as np
+import os
 from matplotlib import pyplot as plt
 
 
@@ -57,6 +59,26 @@ class TestCauset(CausetTestCase):
         self.assertCauset(Causet.NewFence(3), 6, False, False)
         self.assertCauset(Causet.NewFence(4), 8, False, False)
 
+    def test_FromPastMatrix(self):
+        C: np.ndarray = np.array([[False, True, True],
+                                  [False, False, False],
+                                  [False, False, False],
+                                  [True, True, True],
+                                  [True, False, False]])
+        S: Causet = Causet.FromFutureMatrix(C)
+        self.assertCauset(S, 5, False, False)
+        self.assertRaises(ValueError, Causet.FromPastMatrix, C)
+        self.assertRaises(ValueError, Causet.FromPastMatrix,
+                          np.array([[False, True], [True, False]]))
+
+#     def test_PastMatrix(self):
+#         filename: str = 'test_causets.test_PastMatrix.csv'
+#         S: Causet = Causet.NewChain(4)
+#         S.saveAsCSV(filename)
+#         S = Causet.FromTextFile(filename)
+#         self.assertCauset(S, 4, True, False)
+#         os.remove(filename)
+
     def test_merge(self):
         S_antichain: Causet = Causet.NewAntichain(5)
         S_chain: Causet = Causet.NewChain(5)
@@ -68,7 +90,7 @@ class TestCauset(CausetTestCase):
     def test_Paths(self):
         S: Causet = Causet.NewAntichain(5)
         self.assertEqual(list(S.Paths(S.find(1), S.find(5))), [])
-        S = Causet.NewPermutation([1, 5, 4, 3, 2, 6])
+        S = Causet.FromPermutation([1, 5, 4, 3, 2, 6])
         i: int = 0
         bot: CausetEvent = S.find(1)
         central: Set[CausetEvent] = S.findAll(2, 3, 4, 5)
@@ -89,14 +111,15 @@ class TestCauset(CausetTestCase):
         S = Causet.NewFence(6)
         i: int = 0
         first: CausetEvent = S.find('1')
-        between: Set[CausetEvent] = S.findAll('2', '3', '5', '6')
+        between1: Set[CausetEvent] = S.findAll('2', '6')
+        between2: Set[CausetEvent] = S.findAll('3', '5')
         last: CausetEvent = S.find('4')
         for ap in S.Antipaths(first, last, along=S.PastInf):
             i += 1
             self.assertEqual(len(ap), 4)
             self.assertEqual(ap[0], first)
-            self.assertIn(ap[1], between)
-            self.assertIn(ap[2], between)
+            self.assertIn(ap[1], between1)
+            self.assertIn(ap[2], between2)
             self.assertEqual(ap[3], last)
         self.assertEqual(i, 2)
         i = 0
@@ -111,15 +134,16 @@ class TestCauset(CausetTestCase):
         eventList: List[CausetEvent] = list(S._events)
         # S.plotDiagram(set([*eventList[1:12], *eventList[13:15]]))
         # S.plotDiagram(set([*eventList[2:8], eventList[0]]))
-        S = EmbeddedCauset.NewPermutation([8, 5, 7, 3, 4, 2, 6, 1])
-        S = EmbeddedCauset.NewPermutation([6, 8, 4, 5, 3, 7, 2, 1])
-        S = EmbeddedCauset.NewPermutation(
+        S = EmbeddedCauset.FromPermutation([8, 5, 7, 3, 4, 2, 6, 1])
+        S = EmbeddedCauset.FromPermutation([6, 8, 4, 5, 3, 7, 2, 1])
+        S = EmbeddedCauset.FromPermutation(
             [3, 8, 10, 11, 14, 7, 1, 5, 12, 9, 6, 2, 13, 4])
-        S = Causet.NewFence(5)
-#         events = S.sortedByLabels(S.PastInf)
-#         S._print_eventlist(events)
-#         print(S.DistanceMatrix(events, False))
-#         print(S.DistanceMatrix(events))
+        S = Causet.NewFence(6)
+        S.AntichainPermutations(S.PastInf)
+#         event = S.sortedByLabels(S.PastInf)
+#         S._print_eventlist(event)
+#         print(S.DistanceMatrix(event, False))
+#         print(S.DistanceMatrix(event))
         # S._print_eventlists(S.disjoint())
 #         S = Causet.NewPermutation(
 #             [1, 6, 8, 7, 9, 5, 12, 3, 2, 10, 11, 4])

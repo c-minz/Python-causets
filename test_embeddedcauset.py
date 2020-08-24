@@ -7,17 +7,17 @@ Created on 20 Jul 2020
 from __future__ import annotations
 import unittest
 import math
-from causets import Causet
-from events import CausetEvent
-from embeddedcausets import EmbeddedCauset
-from test_causets import CausetTestCase
+from causet import Causet
+from event import CausetEvent
+from embeddedcauset import EmbeddedCauset
+from test_causet import CausetTestCase
 from matplotlib import pyplot as plt
 
 
 class TestEmbeddedCauset(CausetTestCase):
 
     def setUp(self):
-        self.C = EmbeddedCauset(2, shape={'name': 'cube'})
+        self.C = EmbeddedCauset(2, shape='cube')
 
     def tearDown(self):
         pass
@@ -41,7 +41,7 @@ class TestEmbeddedCauset(CausetTestCase):
         # self.assertCauset(C, 8, False, False)
         # C: EmbeddedCauset = EmbeddedCauset.NewPermutation(
         #     [3, 12, 2, 5, 11, 10, 1, 8, 6, 9, 7, 4])
-        C: Causet = Causet.NewSimplex(4)
+        C: Causet = Causet.NewSimplex(3)
         self.assertCauset(C, 15, False, False)
 #         C.plot()
 #         plt.show()
@@ -58,7 +58,7 @@ class TestEmbeddedCauset(CausetTestCase):
         self.assertRaises(ValueError, self.C.setShape,
                           2, 'unknown')  # unknown shape
         self.assertRaises(ValueError, self.C.setShape,
-                          2, 'bicone', center=[0.0, 0.0, 0.0])  # dimension mismatch
+                          2, 'diamond', center=[0.0, 0.0, 0.0])  # dimension mismatch
         self.assertRaises(ValueError, self.C.setShape,
                           2, 'cuboid', edges=[1.0, 1.0, 0.0])  # dimension mismatch
         self.assertRaises(ValueError, self.C.setShape,
@@ -83,7 +83,7 @@ class TestEmbeddedCauset(CausetTestCase):
         self.C.setShape(4, 'cylinder', radius=2.1, duration=2.4)
         self.assertAlmostEqual(self.C.Volume,
                                2.4 * 4.0 * math.pi * 2.1**3.0 / 3.0, 4)
-        self.C.setShape(4, 'bicone', radius=2.1)
+        self.C.setShape(4, 'diamond', radius=2.1)
         self.assertAlmostEqual(self.C.Volume,
                                2.0 * 2.1 * 4.0 * math.pi * 2.1**3.0 / 3.0 / 4.0, 4)
 

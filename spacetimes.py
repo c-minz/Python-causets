@@ -24,9 +24,9 @@ def Causality(name: str, dim: int,
 
     Supported but not implemented spacetimes:
     'deSitter' for dim >= 2 
-    (de Sitter radius parameter 'r_dS': float)
+    (de Sitter radius parameter 'r_dS': float, default: 0.5)
     'Schwarzschild' for dim >= 2 
-    (Schwarzschild radius parameter 'r_S': float)
+    (Schwarzschild radius parameter 'r_S': float, default: 0.5)
     '''
     if name in {'Minkowski', 'flat'}:
         if dim == 1:
@@ -45,13 +45,17 @@ def Causality(name: str, dim: int,
             def isCausal_Minkowski(x: np.ndarray,
                                    y: np.ndarray) -> Tuple[bool, bool]:
                 isConnected: bool = \
-                    (y[0] - x[0])**2 >= sum((y[1:] - x[1:])**2)
+                    np.square(y[0] - x[0]) >= sum(np.square(y[1:] - x[1:]))
                 return ((x[0] <= y[0]) and isConnected,
                         (x[0] > y[0]) and isConnected)
             return isCausal_Minkowski
 
     elif name == 'deSitter':
-        _rdS = kwargs['r_dS']  # de Sitter radius
+        _rdS: float
+        try:
+            _rdS = kwargs['r_dS']  # de Sitter radius
+        except KeyError:
+            _rdS = 0.5
         if dim == 2:
             def isCausal_deSitter2D(x: np.ndarray,
                                     y: np.ndarray) -> Tuple[bool, bool]:
@@ -63,13 +67,17 @@ def Causality(name: str, dim: int,
             def isCausal_deSitter(x: np.ndarray,
                                   y: np.ndarray) -> Tuple[bool, bool]:
                 isConnected: bool = \
-                    (y[0] - x[0])**2 >= sum((y[1:] - x[1:])**2)
+                    np.square(y[0] - x[0]) >= sum(np.square(y[1:] - x[1:]))
                 return ((x[0] <= y[0]) and isConnected,
                         (x[0] > y[0]) and isConnected)
             return isCausal_deSitter
 
     elif name == 'Schwarzschild':
-        _rS = kwargs['r_S']  # Schwarzschild radius
+        _rS: float
+        try:
+            _rS = kwargs['r_S']  # Schwarzschild radius
+        except KeyError:
+            _rS = 0.5
         if dim == 2:
             def isCausal_Schwarzschild2D(x: np.ndarray,
                                          y: np.ndarray) -> Tuple[bool, bool]:
@@ -81,7 +89,7 @@ def Causality(name: str, dim: int,
             def isCausal_Schwarzschild(x: np.ndarray,
                                        y: np.ndarray) -> Tuple[bool, bool]:
                 isConnected: bool = \
-                    (y[0] - x[0])**2 >= sum((y[1:] - x[1:])**2)
+                    (y[0] - x[0])**2 >= sum(np.square(y[1:] - x[1:]))
                 return ((x[0] <= y[0]) and isConnected,
                         (x[0] > y[0]) and isConnected)
             return isCausal_Schwarzschild

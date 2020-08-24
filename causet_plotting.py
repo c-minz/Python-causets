@@ -6,25 +6,40 @@ Created on 22 Jul 2020
 '''
 from __future__ import annotations
 from typing import List, Dict, Any, Callable, Union
-from events import CausetEvent
+from event import CausetEvent
 import numpy as np
 from matplotlib import patches, pyplot as plt, axes as plta
+import causet_plotting_colors as colors
 
-# This is the official colour scheme of the University of York.
-# You may replace it by any other colour scheme.
-color_scheme: Dict[str, str] = {'black':    '#262F38',
-                                'darkblue': '#00546E',
-                                'white':    '#C5C9CA',
-                                'grey':     '#C7C1B0',
-                                'blue':     '#1389D9',
-                                'cyan':     '#00A29A',
-                                'lime':     '#89CF00',
-                                'green':    '#6BB201',
-                                'yellow':   '#FFA900',
-                                'orange':   '#FF5200',
-                                'red':      '#DD001F',
-                                'pink':     '#D50083',
-                                'purple':   '#7C4DC4'}
+color_scheme: Dict[str, str] = colors.ColorSchemes['matplotlib']
+default_colors: Dict[str, str] = {'links':       'blue',
+                                  'linksedge':   'blue',
+                                  'linksface':   'cyan',
+                                  'eventsedge':  'black',
+                                  'eventsface':  'core',
+                                  'conesedge':   'orange',
+                                  'conesface':   'yellow'}
+
+
+def setDefaultColors(schemeName: str = 'matplotlib', **kwargs) -> None:
+    '''
+    Sets the scheme of the default colors for all plots to `schemeName`. 
+    As optional keyword arguments the following colors can be set:
+    links       (default 'blue')
+    linksedge   (default 'blue')
+    linksface   (default 'cyan')
+    eventsedge  (default 'black')
+    eventsface  (default 'core')
+    conesedge   (default 'orange')
+    conesface   (default 'yellow')
+    '''
+    try:
+        color_scheme = colors.ColorSchemes[schemeName]
+        default_colors.update(kwargs)
+    except KeyError:
+        raise ValueError(
+            f'The color scheme \'{schemeName}\' is not defined.\n' +
+            'New color schemes can be added to \'causet_plotting_colors.\'')
 
 
 def plot_parameters(**kwargs) -> Dict[str, Any]:
@@ -75,7 +90,7 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     Default: 'linear'
 
 
-    >> Plot parameters for links, events, labels:
+    >> Plot parameters for links, event, labels:
     'links': bool, Dict[str, Any]
     Switch on the plotting of links with True (Default). A non-empty 
     dictionary will also show links. The parameters have to be supported by 
@@ -86,23 +101,23 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     {'linewidth': 2.0,
      'linestyle': '-',
      'markevery': 3,
-     'color': color_scheme['blue'],
+     'color': default_colors['links'],
      'marker': 'o',
      'markersize': 5.0,
-     'markeredgecolor': color_scheme['blue'],
-     'markerfacecolor': color_scheme['cyan']}
+     'markeredgecolor': default_colors['linksedge'],
+     'markerfacecolor': default_colors['linksface']}
 
-    'events': bool, Dict[str, Any]
-    Switch on the plotting of events with True (Default). A non-empty 
-    dictionary will also show events. The parameters have to be supported by 
+    'event': bool, Dict[str, Any]
+    Switch on the plotting of event with True (Default). A non-empty 
+    dictionary will also show event. The parameters have to be supported by 
     matplotlib.lines.Line2D.
     Default:
     {'linewidth': 2.0,
      'linestyle': '',
      'marker': 'o',
      'markersize': 7.0,
-     'markeredgecolor': color_scheme['darkblue'],
-     'markerfacecolor': color_scheme['black']}
+     'markeredgecolor': default_colors['eventsedge'],
+     'markerfacecolor': default_colors['eventsface']}
 
     'labels': bool, Dict[str, Any]
     Switch on the plotting of event labels with True (Default). A non-empty 
@@ -122,10 +137,13 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     supported by matplotlib.patches.Patch (2D plots) or 
     by mpl_toolkits.mplot3d.art3d.Poly3DCollection (3D plots).
     Default 2D:
-    {'edgecolor': color_scheme['orange'], 
-    'facecolor': color_scheme['yellow'], 'alpha': 0.1}
+    {'edgecolor': default_colors['conesedge'], 
+     'facecolor': default_colors['conesface'], 
+     'alpha': 0.1}
     Default 3D:
-    {'edgecolor': None, 'color': color_scheme['yellow'], 'alpha': 0.1}
+    {'edgecolor': None, 
+     'color': default_colors['conesface'], 
+     'alpha': 0.1}
 
     'conetimefade': str
     Specifies the time fading type for the 'alpha' of the lightcones, which 
@@ -165,11 +183,11 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     # pastcones parameters:
     if p['3d']:
         p_pcones = {'edgecolor': None,
-                    'color': color_scheme['yellow'],
+                    'color': color_scheme[default_colors['conesface']],
                     'alpha': 0.1}
     else:
-        p_pcones = {'edgecolor': color_scheme['orange'],
-                    'facecolor': color_scheme['yellow'],
+        p_pcones = {'edgecolor': color_scheme[default_colors['conesedge']],
+                    'facecolor': color_scheme[default_colors['conesface']],
                     'alpha': 0.1}
     p_args: Any = kwargs.pop('pastcones', False)
     if isinstance(p_args, bool):
@@ -181,11 +199,11 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     # futurecones parameters:
     if p['3d']:
         p_fcones = {'edgecolor': None,
-                    'color': color_scheme['yellow'],
+                    'color': color_scheme[default_colors['conesface']],
                     'alpha': 0.1}
     else:
-        p_fcones = {'edgecolor': color_scheme['orange'],
-                    'facecolor': color_scheme['yellow'],
+        p_fcones = {'edgecolor': color_scheme[default_colors['conesedge']],
+                    'facecolor': color_scheme[default_colors['conesface']],
                     'alpha': 0.1}
     p_args = kwargs.pop('futurecones', False)
     if isinstance(p_args, bool):
@@ -198,11 +216,11 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     p_links = {'linewidth': 2.0,
                'linestyle': '-',
                'markevery': 3,
-               'color': color_scheme['blue'],
+               'color': color_scheme[default_colors['links']],
                'marker': 'o',
                'markersize': 5.0,
-               'markeredgecolor': color_scheme['blue'],
-               'markerfacecolor': color_scheme['cyan']}
+               'markeredgecolor': color_scheme[default_colors['linksedge']],
+               'markerfacecolor': color_scheme[default_colors['linksface']]}
     p_args = kwargs.pop('links', True)
     if isinstance(p_args, bool):
         if p_args:
@@ -210,20 +228,20 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     else:
         p_links.update(p_args)
         p['links'] = p_links
-    # events parameters:
+    # event parameters:
     p_events = {'linewidth': 2.0,
                 'linestyle': '',
                 'marker': 'o',
                 'markersize': 7.0,
-                'markeredgecolor': color_scheme['darkblue'],
-                'markerfacecolor': color_scheme['black']}
-    p_args = kwargs.pop('events', True)
+                'markeredgecolor': color_scheme[default_colors['eventsedge']],
+                'markerfacecolor': color_scheme[default_colors['eventsface']]}
+    p_args = kwargs.pop('event', True)
     if isinstance(p_args, bool):
         if p_args:
-            p['events'] = p_events
+            p['event'] = p_events
     else:
         p_events.update(p_args)
-        p['events'] = p_events
+        p['event'] = p_events
     # labels parameters:
     p_labels = {'verticalalignment': 'top',
                 'horizontalalignment': 'right'}
@@ -240,8 +258,8 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
 def dynamic_parameter(function: str, dim: int, timedepth: float,
                       alpha_max: float) -> Callable[[Any], Any]:
     '''
-    Returns a function handle to compute the 'alpha' parameter for 
-    lightcones, and also in dynamic plot mode for links and events.
+    Returns a function handle to compute the `alpha` parameter for 
+    lightcones, and also in dynamic plot mode for links and event.
     '''
     _timefade: float
     if timedepth == 0.0:
@@ -385,13 +403,13 @@ def cone_plotter(ax: plta.Axes, is3D: bool, dim: int, timeaxis: int,
         return _cone2
 
 
-def plotter(eventList: List[CausetEvent], coords: np.ndarray,
+def Plotter(eventList: List[CausetEvent], coords: np.ndarray,
             plotAxes: plta.Axes=None, **kwargs) -> \
         Callable[[float], Dict[str, Any]]:
     '''
-    Returns a plotter function handle that requires the 'time' parameters, 
+    Returns a Plotter function handle that requires the 'time' parameters, 
     which has to be an list or np.ndarray of (one or two) float values.
-    Call the returned function to plots the events in eventList and their 
+    Call the returned function to plots the event in eventList and their 
     links (and further objects) to the Axes object ax. If ax is set to 
     None (default) it plots in the current axes. The function returns a 
     dictionary of plot object pointers. The keyword arguments are 
@@ -444,7 +462,7 @@ def plotter(eventList: List[CausetEvent], coords: np.ndarray,
                     _hpcn[i] = plotpcone(c[0], c[_xy_z])
                 if isPlottingFuturecones:
                     _hfcn[i] = plotfcone(c[0], c[_xy_z])
-        # plot links, events, labels:
+        # plot links, event, labels:
         l: int = -1
         if 'timedepth' in plotting:  # dynamic plots only
             t_depth = plotting['timedepth']
@@ -454,8 +472,8 @@ def plotter(eventList: List[CausetEvent], coords: np.ndarray,
                 _hlnk = [None] * linkCount
             else:
                 plotting_links = {}
-            if 'events' in plotting:
-                plotting_events: Dict[str, Any] = plotting['events']
+            if 'event' in plotting:
+                plotting_events: Dict[str, Any] = plotting['event']
                 _hvnt = [None] * eventCount
             else:
                 plotting_events = {}
@@ -558,16 +576,16 @@ def plotter(eventList: List[CausetEvent], coords: np.ndarray,
                             _hlnk[l] = ax.plot([coords[i, _x], coords[j, _x]],
                                                [coords[i, _y], coords[j, _y]],
                                                **plotting['links'])
-            if 'events' in plotting:
+            if 'event' in plotting:
                 _hvnt = [None] * eventCount
                 for i in range(eventCount):
                     if is3d:
                         _hvnt[i] = ax.plot([coords[i, _x]], [coords[i, _y]],
                                            [coords[i, _z]],
-                                           **plotting['events'])
+                                           **plotting['event'])
                     else:
                         _hvnt[i] = ax.plot([coords[i, _x]], [coords[i, _y]],
-                                           **plotting['events'])
+                                           **plotting['event'])
             if 'labels' in plotting:
                 _hlbl = [None] * eventCount
                 for i, e in enumerate(eventList):
@@ -596,8 +614,8 @@ def plotter(eventList: List[CausetEvent], coords: np.ndarray,
             _h['futurecones'] = _hfcn
         if 'links' in plotting:
             _h['links'] = _hlnk
-        if 'events' in plotting:
-            _h['events'] = _hvnt
+        if 'event' in plotting:
+            _h['event'] = _hvnt
         if 'labels' in plotting:
             _h['labels'] = _hlbl
         return _h
@@ -608,7 +626,7 @@ def plotter(eventList: List[CausetEvent], coords: np.ndarray,
 def plot(eventList: List[CausetEvent], coords: np.ndarray,
          ax: plta.Axes=None, **kwargs) -> Dict[str, Any]:
     '''
-    Plots the events in eventList and their links to the Axes object ax 
+    Plots the event in eventList and their links to the Axes object ax 
     (or current axes by default). It returns a dictionary of plot object 
     pointers. The keyword arguments are explained in the doc of 
     plot_parameters.
@@ -619,4 +637,4 @@ def plot(eventList: List[CausetEvent], coords: np.ndarray,
             time = kwargs['time']
         else:
             time = np.array([kwargs['time'], kwargs['time']])
-    return plotter(eventList, coords, ax, **kwargs)(time)
+    return Plotter(eventList, coords, ax, **kwargs)(time)
