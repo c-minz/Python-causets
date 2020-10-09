@@ -10,7 +10,8 @@ The class `EmbeddedCauset` extends `Causet` and is able to handle the coordinate
 # Examples and Testing
 Most of the implemented code has been tested with the `unittest` module. The test modules are named as `test_...` and also show some principle examples. 
 
-A demonstration is provided as `demo.py`.
+A demonstration is provided as `demo.py` that generates a sprinkle in 3-dimensional de Sitter space. An example plot is given here (see `demo.png`).
+![Example Plot for a Sprinkle in de Sitter Space](https://github.com/c-minz/causets/blob/master/demo.png)
 
 # Past Development
 The original code was developed in MATLAB R2019a and R2020a as part of my PhD projects at the University of York (from 2017 to 2021). In order to make the code usable without a MATLAB license, I started to convert it to Python 3.8.3 with mypy typing support.
