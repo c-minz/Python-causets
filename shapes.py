@@ -4,6 +4,7 @@ Created on 1 Oct 2020
 
 @author: Christoph Minz
 '''
+from __future__ import annotations
 from typing import List, Dict, Tuple, Any, Union
 import math
 import numpy as np
