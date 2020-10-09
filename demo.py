@@ -45,4 +45,5 @@ ax.set_xlabel('space' if dims[0] > 0 else 'time')
 ax.set_ylabel('space' if dims[1] > 0 else 'time')
 if len(dims) > 2:
     ax.set_zlabel('space' if dims[2] > 0 else 'time')
+    ax.grid(False)
 plt.show()
