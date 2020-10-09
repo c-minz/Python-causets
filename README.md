@@ -7,10 +7,16 @@ An instance of `Causet` (`causets.py`) is a set of `CausetEvent` (`events.py`) t
 
 The class `EmbeddedCauset` extends `Causet` and is able to handle the coordinates of events (their embedding) in a given region of a spacetime. Instances of this class can be plotted (including support for light-cone plotting). The subclass `SprinkledCauset` adds the functionality to sprinkle new causets or to intensify a given spacetime region by more points.  
 
+# Examples and Testing
+Most of the implemented code has been tested with the `unittest` module. The test modules are named as `test_...` and also show some principle examples. 
+
+A demonstration is provided as `demo.py`.
+
 # Past Development
-The original code was developed in MATLAB R2019a and R2020a. In order to make the code usable without a MATLAB license, I started to convert it to Python 3.8.3 with mypy typing support.
+The original code was developed in MATLAB R2019a and R2020a as part of my PhD projects at the University of York (from 2017 to 2021). In order to make the code usable without a MATLAB license, I started to convert it to Python 3.8.3 with mypy typing support.
 
 The Python classes and functions are documented so that the help commands within Python give further information. 
+For distributional purposes, see LICENSE.md
 
 # Future Development
 Further development ideas include: 

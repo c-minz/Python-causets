@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Basic modules:
 from event import *
 from causet import *
