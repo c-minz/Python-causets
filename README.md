@@ -3,7 +3,7 @@ This project contains Python modules for numerical investigations in causal set 
 
 This project implements methods to create causal sets generically, define them by embedding coordinates in a spacetime, or via the Poisson process (sprinkling) on any implemented spacetime (`spacetimes.py` currently supports flat spacetime, de Sitter, Anti-de Sitter, and some first developments of black hole spacetimes).
 
-An instance of `Causet` (`causets.py`) is a set of `CausetEvent` (`events.py`) that has additional functionality. Each instance of `CausetEvent` can be used in logical expressions, e.g. `a < b` is True if and only if `a` is in the causal past of `b`. The `Causet` class can be used to get subsets like `Layers`, `Ranks`, futures and future and past of event (sets), future and past infinities, causal paths, and many more. The events of a causet can be sorted by different properties.
+An instance of `Causet` (`causets.py`) is a set of `CausetEvent` (`events.py`) that has additional functionality. Each instance of `CausetEvent` can be used in logical expressions, e.g. `a < b` is True if and only if `a` is in the causal past of `b`. The `Causet` class can be used to get subsets like `Layers`, `Ranks`, future and past of event (sets), future and past infinities, causal paths, and many more. The events of a causet can be sorted by different properties.
 
 The class `EmbeddedCauset` extends `Causet` and is able to handle the coordinates of events (their embedding) in a given region of a spacetime. Instances of this class can be plotted (including support for light-cone plotting). The subclass `SprinkledCauset` adds the functionality to sprinkle new causets or to intensify a given spacetime region by more points.  
 
