@@ -45,7 +45,8 @@ class Causet(object):
     def FromPermutation(P: List[int], labelFormat: str = None) -> 'Causet':
         '''
         Generates a causal set from the list `P` of permuted integers that 
-        can be embedded in an Alexandrov subset of Minkowski spacetime.
+        represent a bi-poset (also known as 2D order) that can be embedded 
+        in an Alexandrov subset of 2D Minkowski spacetime.
 
         If the optional argument `labelFormat = None` (default) the integer 
         values are used to label the event. Use an empty string '' not to 
@@ -112,38 +113,66 @@ class Causet(object):
         return Causet(eventSet)
 
     @staticmethod
-    def NewFence(l: int, closed: bool = True) -> 'Causet':
+    def NewFence(length: int, height: int = 1,
+                 closed: bool = True) -> 'Causet':
         '''
-        Generates a fence causal set of length `l` (with `2 * l` many 
-        event). If closed (default), the fence needs flat spacetime of 
-        dimension 1 + 2 to be embedded, otherwise it can also be 
-        embedded in flat spacetime of dimension 1 + 1.
+        Generates a fence causal set of `length` (with 
+        `(height + 1) * length` many event). If `closed` (default), the 
+        fence needs flat spacetime of dimension 1 + 2 to be embedded, 
+        otherwise it can also be embedded in flat spacetime of dimension 
+        1 + 1.
         '''
-        if l < 1:
+        if (length < 1) or (height < 0):
             return Causet(set())
-        elif l == 1:
-            e: CausetEvent = CausetEvent(label='1')
-            return Causet({e, CausetEvent(past={e}, label='1-1')})
+        elif length == 1:
+            return Causet.NewChain(height + 1)
         else:
-            base: List[CausetEvent] = [CausetEvent(label=str(i))
-                                       for i in range(1, l + 1)]
-            eventSet: Set[CausetEvent] = set(base)
-            for i in range(l):
-                if (i == 0) and not closed:
-                    eventSet.add(CausetEvent(past={base[0]}, label='1-1'))
+            loop: List[CausetEvent] = [CausetEvent(label=l)
+                                       for l in range(1, length + 1)]
+            eventSet: Set[CausetEvent] = set(loop)
+            for h in range(1, height + 1):
+                offset: int = h * length + 1
+                next_loop: List[CausetEvent]
+                if closed:
+                    next_loop = [CausetEvent(past={loop[l - 1], loop[l]},
+                                             label=l + offset)
+                                 for l in range(length)]
                 else:
-                    pastList: List[CausetEvent] = [base[i - 1], base[i]]
-                    eventSet.add(CausetEvent(
-                        past=set(pastList),
-                        label='-'.join(e.Label for e in pastList)))
+                    next_loop = [CausetEvent(past={loop[0]}, label=offset)] \
+                        + [CausetEvent(past={loop[l - 1], loop[l]},
+                                       label=l + offset)
+                           for l in range(1, length)]
+                eventSet.update(next_loop)
+                loop = next_loop
             return Causet(eventSet)
+
+    @staticmethod
+    def NewCrown(length: int = 3) -> 'Causet':
+        '''
+        This function is implemented for convenience.
+        It redirects to `Causet.NewFence` with the default values `height=1` 
+        and `closed=True`. 
+        '''
+        return Causet.NewFence(length, height=1, closed=True)
+
+    @staticmethod
+    def NewKROrder(n: int, rng=np.random.default_rng()):
+        '''
+        Returns a new Causet with 3 layers where the first and third layer 
+        have `n` elements and the second layer has `2 * n` events. 
+        Each event in the second layer is linked to a random number of 
+        (possibly zero) events in the first layer. Each event in the third 
+        layer is linked to a random number of (possibly zero) events in the 
+        second layer. 
+        '''
+        return NotImplemented
 
     @staticmethod
     def FromPastMatrix(C: np.ndarray) -> 'Causet':
         '''
         Converts a logical matrix into a `Causet` object. The entry
-        `C[i, j]` has to be True if the event with index j is in the (link) 
-        past of event with index i.
+        `C[i, j]` has to be True or 1 if the event with index j is in the 
+        (link) past of event with index i.
         If the matrix has less rows than columns, empty rows are added 
         after the last row. However, if the matrix has more rows than 
         columns, a ValueError is raised. A ValueError is also raised if the 
@@ -181,7 +210,7 @@ class Causet(object):
 
     @staticmethod
     def FromTextFile(filename: Any, isPastMatrix: bool = True,
-                     delimiter: bool = ',', **kwargs) -> 'Causet':
+                     delimiter: str = ',', **kwargs) -> 'Causet':
         '''
         Passes the filename and delimiter (and further keyword arguments) 
         to the `genfromtxt` function of `numpy`. The resulting logical 
@@ -357,41 +386,49 @@ class Causet(object):
     def __contains__(self, other: CausetEvent) -> bool:
         return other in self._events
 
-    def __sub__(self, other: Iterable) -> Set[CausetEvent]:
+    def __sub__(self, other: Iterable[CausetEvent]) -> \
+            Set[CausetEvent]:
         return self._events - set(other)
 
-    def __rsub__(self, other: Iterable) -> Set[CausetEvent]:
+    def __rsub__(self, other: Iterable[CausetEvent]) -> \
+            Set[CausetEvent]:
         return self._events - set(other)
 
-    def __or__(self, other: Iterable) -> Set[CausetEvent]:
+    def __or__(self, other: Iterable[CausetEvent]) -> \
+            Set[CausetEvent]:
         return self._events | set(other)
 
-    def __ror__(self, other: Iterable) -> Set[CausetEvent]:
+    def __ror__(self, other: Iterable[CausetEvent]) -> \
+            Set[CausetEvent]:
         return self._events | set(other)
 
-    def __and__(self, other: Iterable) -> Set[CausetEvent]:
+    def __and__(self, other: Iterable[CausetEvent]) -> \
+            Set[CausetEvent]:
         return self._events & set(other)
 
-    def __rand__(self, other: Iterable) -> Set[CausetEvent]:
+    def __rand__(self, other: Iterable[CausetEvent]) -> \
+            Set[CausetEvent]:
         return self._events & set(other)
 
-    def __xor__(self, other: Iterable) -> Set[CausetEvent]:
+    def __xor__(self, other: Iterable[CausetEvent]) -> \
+            Set[CausetEvent]:
         return self._events ^ set(other)
 
-    def __rxor__(self, other: Iterable) -> Set[CausetEvent]:
+    def __rxor__(self, other: Iterable[CausetEvent]) -> \
+            Set[CausetEvent]:
         return self._events ^ set(other)
 
-    def difference(self, other):
-        return self._events.difference(other._events)
+    def difference(self, other: Iterable[CausetEvent]):
+        return self._events.difference(set(other))
 
-    def intersection(self, other):
-        return self._events.intersection(other._events)
+    def intersection(self, other: Iterable[CausetEvent]):
+        return self._events.intersection(set(other))
 
-    def symmetric_difference(self, other):
-        return self._events.symmetric_difference(other._events)
+    def symmetric_difference(self, other: Iterable[CausetEvent]):
+        return self._events.symmetric_difference(set(other))
 
-    def union(self, other):
-        return self._events.union(other._events)
+    def union(self, other: Iterable[CausetEvent]):
+        return self._events.union(set(other))
 
     def isChain(self, events: Iterable[CausetEvent] = None) -> bool:
         '''
@@ -496,7 +533,7 @@ class Causet(object):
         Returns the number of event without any future event (future 
         infinity).
         '''
-        return sum(e for e in self._events if e.FutureCard == 0)
+        return sum(1 for e in self._events if e.FutureCard == 0)
 
     @staticmethod
     def PastInfOf(eventSet: Set[CausetEvent]) -> Set[CausetEvent]:
@@ -979,7 +1016,9 @@ class Causet(object):
                        for e_p in pastIntersect
                        for e_f in futureIntersect)
 
-    def DistanceMatrix(self, antichain: List[CausetEvent],
+    def DistanceMatrix(self, antichain: Union[List[CausetEvent],
+                                              Tuple[CausetEvent, ...],
+                                              np.ndarray],
                        counting: str = 'ziczac',
                        recursive: bool = True) -> np.ndarray:
         '''
@@ -998,12 +1037,16 @@ class Causet(object):
         recursively added (default) or the distance computation breaks 
         after the first iteration. 
         '''
+        is_counting_ziczac: bool = counting == 'ziczac'
+        if not is_counting_ziczac and (counting != 'intersection'):
+            raise ValueError(f'Counting method \'{counting}\' is not ' +
+                             'supported.\n' +
+                             'Use \'ziczac\' or \'intersection\'.')
         l: int = len(antichain)
         D: np.ndarray = np.zeros((l, l), dtype=int)
         ac_set: Set[CausetEvent] = set(antichain)
         slice_set: Set[CausetEvent] = ac_set
         thickerslice_set = self.Layers(slice_set, -1, 1)
-        is_counting_ziczac: bool = counting == 'ziczac'
         d: int
         while len(slice_set) < len(thickerslice_set):
             slice_set = thickerslice_set
@@ -1167,14 +1210,21 @@ class Causet(object):
         return layeredList
 
     def AntichainPermutations(self, antichain: Set[CausetEvent],
-                              orientationLayer: List[CausetEvent] = None) -> \
+                              orientationLayer: List[CausetEvent] = None,
+                              includeLocalSymmetries: bool = False,
+                              includeGlobalSymmetry: bool = False) -> \
             Iterator[List[CausetEvent]]:
         ac_list: List[CausetEvent] = list(antichain)
-        D: np.ndarray = self.DistanceMatrix(ac_list, recursive=True)
+        D: np.ndarray = self.DistanceMatrix(ac_list, counting='intersection',
+                                            recursive=True)
         for i, j in zip(*np.where(D == np.max(D))):
-            if i < j:
-                #print(f'{ac_list[i]} - {ac_list[j]}')
-                pass
+            if includeGlobalSymmetry or (i < j):
+                ac_perm: List[CausetEvent]
+                for p in self.Antipaths(ac_list[i], ac_list[j],
+                                        along=ac_list, distances=D):
+                    ac_perm = p
+                    ac_perm
+                yield ac_perm
 
     def AntichainPermutations_old(self, eventSet: Set[CausetEvent],
                                   pastLayer: Tuple[CausetEvent, ...] = ()) -> \
@@ -1298,7 +1348,7 @@ class Causet(object):
         print('| '.join(', '.join(str(e) for e in el) for el in ell))
 
     def layeredPermutations(self, eventSet: Set[CausetEvent] = None) -> \
-            Iterator[List[Tuple[CausetEvent, ...]]]:
+            Iterator[List[List[CausetEvent]]]:
         '''
         Returns an iterator that yields all possible permutations of all 
         layers of the set `eventSet`.
@@ -1307,9 +1357,9 @@ class Causet(object):
             eventSet = self._events
         layer_sets: List[Set[CausetEvent]] = self.layered(eventSet)
         layer_count: int = len(layer_sets)
-        layer_iterators: List[Iterator[Tuple[CausetEvent, ...]]] = \
-            [iter([(CausetEvent(),)])] * layer_count
-        layers_perm: List[Tuple[CausetEvent, ...]] = [tuple()] * layer_count
+        layer_iterators: List[Iterator[List[CausetEvent]]] = \
+            [iter([[CausetEvent()]])] * layer_count
+        layers_perm: List[List[CausetEvent]] = [[]] * layer_count
         # initialise:
         for l, layer_set in enumerate(layer_sets):
             layer_iterators[l] = self.AntichainPermutations(
@@ -1375,7 +1425,7 @@ class Causet(object):
                 for a in layer:
                     ext_future: Set[CausetEvent] = a.Future & eventSet
                     for m in range(l, layers_len):
-                        future_layer: Tuple[CausetEvent, ...] = layers[m]
+                        future_layer: List[CausetEvent] = layers[m]
                         i_first = 0
                         i_last = -1
                         for i, b in enumerate(future_layer):
@@ -1397,7 +1447,7 @@ class Causet(object):
                     for j, b in enumerate(layer):
                         ext_past: Set[CausetEvent] = b.Past & eventSet
                         for k in range(l - 1, -1, -1):
-                            past_layer: Tuple[CausetEvent, ...] = layers[k]
+                            past_layer: List[CausetEvent] = layers[k]
                             i_first = 0
                             i_last = -1
                             for i, a in enumerate(past_layer):
@@ -1468,8 +1518,8 @@ class Causet(object):
             print(P)
             self.__diagram_coords: np.ndarray = Causet._Permutation_Coords(
                 P, 1.0)
-        plotReturn = cplt.plot(self.__diagram_events,
-                               self.__diagram_coords, ax, **kwargs)
+        plotReturn = cplt.plot(self.__diagram_events, ax, 'Position',
+                               **kwargs)
         if ax is None:
             ax = plt.gca()
         ax.set_axis_off()
@@ -1479,6 +1529,5 @@ class Causet(object):
         '''
         Computes the Hasse diagram and generates a LaTeX TikZ file that 
         creates a drawing.
-        - Not yet implemented -
         '''
-        pass
+        raise NotImplementedError()

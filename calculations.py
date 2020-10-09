@@ -56,7 +56,7 @@ def HarmonicNumberFraction(n: int) -> Fraction:
     if n == 0:
         return Fraction(0, 1)
     else:
-        return sum(Fraction(1, k) for k in range(1, n + 1))
+        return Fraction(sum(Fraction(1, k) for k in range(1, n + 1)))
 
 
 def HarmonicNumberFractions(n: int) -> List[Fraction]:

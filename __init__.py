@@ -1,8 +1,13 @@
+# Basic modules:
 from event import *
 from causet import *
+from calculations import *
+# Modules for spacetime and embedding region support:
+from shapes import *
+from spacetimes import *
+# Modules for embedded causal sets:
 from embeddedcauset import *
 from sprinkledcauset import *
-from spacetimes import *
+# Plot modules:
+from color_schemes import *
 from causet_plotting import *
-from causet_plotting_colors import *
-from calculations import *

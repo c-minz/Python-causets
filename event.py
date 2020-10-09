@@ -5,7 +5,7 @@ Created on 15 Jul 2020
 @author: Christoph Minz
 '''
 from __future__ import annotations
-from typing import Set, List, Any
+from typing import Set, Iterable, Any
 import math
 import numpy as np
 from builtins import str
@@ -39,8 +39,10 @@ class CausetEvent(object):
         This instance will also be added to their future.
         'future': Set[CausetEvent] as a set of (linked) future events. 
         This instance will also be added to their past.
-        'coord': Tuple[float, ...0] as coordinate tuple if the event is 
-        embedded.
+        'coordinates': Iterable[float] for the coordinates if the event is 
+        embedded in a spacetime region.
+        'position': Iterable[float] for the coordinate pair of the event in 
+        a Hasse diagram.
         '''
         try:
             self.Label = kwargs['label']
@@ -59,7 +61,11 @@ class CausetEvent(object):
         except (KeyError, TypeError, ValueError):
             pass
         try:
-            self._coord: np.ndarray = np.array(kwargs['coord'])
+            self._coordinates: np.ndarray = np.array(kwargs['coordinates'])
+        except (KeyError, TypeError, ValueError):
+            pass
+        try:
+            self._position: np.ndarray = np.array(kwargs['position'])
         except (KeyError, TypeError, ValueError):
             pass
         # Add this instance to its causal relatives:
@@ -159,18 +165,18 @@ class CausetEvent(object):
                     return f'{self.__class__.__name__}' + \
                            '(past={' + f'{P}' + '}, ' + \
                            f'label={l}, ' + \
-                           f'coord={self._coord})'
+                           f'coordinates={self._coordinates})'
                 else:
                     return f'{self.__class__.__name__}' + \
                            '(past={' + f'{P}' + '}, ' + \
-                           f'coord={self._coord})'
+                           f'coordinates={self._coordinates})'
             elif l:
                 return f'{self.__class__.__name__}' + \
                        f'(label={l}, ' + \
-                       f'coord={self._coord})'
+                       f'coordinates={self._coordinates})'
             else:
                 return f'{self.__class__.__name__}' + \
-                       f'(coord={self._coord})'
+                       f'(coordinates={self._coordinates})'
         except AttributeError:
             if P:
                 if l:
@@ -464,42 +470,73 @@ class CausetEvent(object):
                         return 3.0
             return r
 
+    @property
+    def Position(self) -> np.ndarray:
+        '''
+        Returns the coordinates as numpy array for the position in a 
+        Hasse diagram.
+        '''
+        try:
+            return self._position
+        except AttributeError:
+            return np.zeros(2)
+
+    @Position.setter
+    def Position(self, value: np.ndarray) -> None:
+        '''
+        Sets the coordinates as numpy array for the position in a 
+        Hasse diagram.
+        '''
+        if value.shape != (2,):
+            raise ValueError('The position has to be a numpy row ' +
+                             'vectors with two columns.')
+        self._position = value
+
+    @property
     def isEmbedded(self) -> bool:
         '''
         Returns True if the event has a coordinate tuple assigned to it.
         '''
-        return hasattr(self, '_coord')
+        return hasattr(self, '_coordinates')
 
-    def embed(self, coord: List[float]) -> None:
+    def embed(self, coordinates: Iterable[float],
+              reembed: bool = False) -> None:
         '''
-        Assigns a coordinate tuple to the event.
+        Assigns coordinates to the event. If the event already has 
+        coordinates, an `AttributeError` is raised. To avoid this error 
+        and overwrite the value, use reembed.
         '''
-        self._coord = np.array(coord)
+        if not reembed and self.isEmbedded:
+            raise AttributeError(f'The event {self} is already embedded. ' +
+                                 'Use the `disembed` method first or use ' +
+                                 'the `reembed` flag.')
+        self._coordinates = np.array(coordinates)
 
-    def eject(self) -> None:
+    def disembed(self) -> None:
         '''
         Removes the embedding of the event.
         '''
-        delattr(self, '_coord')
+        delattr(self, '_coordinates')
 
     @property
-    def Coord(self) -> np.ndarray:
+    def Coordinates(self) -> np.ndarray:
         '''
-        Returns the coordinate tuple.
+        Returns the coordinates as numpy array.
 
         Raises an AttributeError if the event is not embedded.
         '''
-        if self.isEmbedded():
-            return self._coord
+        if self.isEmbedded:
+            return self._coordinates
         else:
-            raise AttributeError('This event is not embedded.')
+            raise AttributeError(f'The event {self} is not embedded. ' +
+                                 'Use the `embed` method first.')
 
     @property
-    def CoordDim(self) -> int:
+    def CoordinatesDim(self) -> int:
         '''
-        Returns the dimension of its coordinate tuple if any, otherwise 0.
+        Returns the dimension of its coordinates if any, otherwise 0.
         '''
         try:
-            return np.alen(self._coord)
+            return np.alen(self._coordinates)
         except AttributeError:
             return 0

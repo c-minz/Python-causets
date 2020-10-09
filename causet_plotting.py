@@ -8,38 +8,34 @@ from __future__ import annotations
 from typing import List, Dict, Any, Callable, Union
 from event import CausetEvent
 import numpy as np
-from matplotlib import patches, pyplot as plt, axes as plta
-import causet_plotting_colors as colors
+from matplotlib import pyplot as plt, axes as plta
+import color_schemes as colors
+from spacetimes import Spacetime, FlatSpacetime
 
-color_scheme: Dict[str, str] = colors.ColorSchemes['matplotlib']
-default_colors: Dict[str, str] = {'links':       'blue',
-                                  'linksedge':   'blue',
-                                  'linksface':   'cyan',
-                                  'eventsedge':  'black',
-                                  'eventsface':  'core',
-                                  'conesedge':   'orange',
-                                  'conesface':   'yellow'}
+default_colors: Dict[str, str] = {'links':       'cs:blue',
+                                  'linksedge':   'cs:blue',
+                                  'linksface':   'cs:cyan',
+                                  'eventsedge':  'cs:black',
+                                  'eventsface':  'cs:core',
+                                  'conesedge':   'cs:orange',
+                                  'conesface':   'cs:yellow'}
 
 
 def setDefaultColors(schemeName: str = 'matplotlib', **kwargs) -> None:
     '''
     Sets the scheme of the default colors for all plots to `schemeName`. 
     As optional keyword arguments the following colors can be set:
-    links       (default 'blue')
-    linksedge   (default 'blue')
-    linksface   (default 'cyan')
-    eventsedge  (default 'black')
-    eventsface  (default 'core')
-    conesedge   (default 'orange')
-    conesface   (default 'yellow')
+    links       (default 'cs:blue')
+    linksedge   (default 'cs:blue')
+    linksface   (default 'cs:cyan')
+    eventsedge  (default 'cs:black')
+    eventsface  (default 'cs:core')
+    conesedge   (default 'cs:orange')
+    conesface   (default 'cs:yellow')
     '''
-    try:
-        color_scheme = colors.ColorSchemes[schemeName]
-        default_colors.update(kwargs)
-    except KeyError:
-        raise ValueError(
-            f'The color scheme \'{schemeName}\' is not defined.\n' +
-            'New color schemes can be added to \'causet_plotting_colors.\'')
+    global default_colors
+    colors.setGlobalColorScheme(schemeName)
+    default_colors.update(kwargs)
 
 
 def plot_parameters(**kwargs) -> Dict[str, Any]:
@@ -107,7 +103,7 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
      'markeredgecolor': default_colors['linksedge'],
      'markerfacecolor': default_colors['linksface']}
 
-    'event': bool, Dict[str, Any]
+    'events': bool, Dict[str, Any]
     Switch on the plotting of event with True (Default). A non-empty 
     dictionary will also show event. The parameters have to be supported by 
     matplotlib.lines.Line2D.
@@ -159,6 +155,7 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     independent of the dynamic plot mode.
     Default: 0.0
     '''
+
     p: Dict[str, Any] = {}
     # axis parameters:
     p['dims'] = kwargs.pop('dims', [1, 0])
@@ -183,80 +180,80 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     # pastcones parameters:
     if p['3d']:
         p_pcones = {'edgecolor': None,
-                    'color': color_scheme[default_colors['conesface']],
+                    'color': default_colors['conesface'],
                     'alpha': 0.1}
     else:
-        p_pcones = {'edgecolor': color_scheme[default_colors['conesedge']],
-                    'facecolor': color_scheme[default_colors['conesface']],
+        p_pcones = {'edgecolor': default_colors['conesedge'],
+                    'facecolor': default_colors['conesface'],
                     'alpha': 0.1}
     p_args: Any = kwargs.pop('pastcones', False)
     if isinstance(p_args, bool):
         if p_args:
-            p['pastcones'] = p_pcones
+            p['pastcones'] = colors.convertColorsInDict(p_pcones)
     else:
         p_pcones.update(p_args)
-        p['pastcones'] = p_pcones
+        p['pastcones'] = colors.convertColorsInDict(p_pcones)
     # futurecones parameters:
     if p['3d']:
         p_fcones = {'edgecolor': None,
-                    'color': color_scheme[default_colors['conesface']],
+                    'color': default_colors['conesface'],
                     'alpha': 0.1}
     else:
-        p_fcones = {'edgecolor': color_scheme[default_colors['conesedge']],
-                    'facecolor': color_scheme[default_colors['conesface']],
+        p_fcones = {'edgecolor': default_colors['conesedge'],
+                    'facecolor': default_colors['conesface'],
                     'alpha': 0.1}
     p_args = kwargs.pop('futurecones', False)
     if isinstance(p_args, bool):
         if p_args:
-            p['futurecones'] = p_fcones
+            p['futurecones'] = colors.convertColorsInDict(p_fcones)
     else:
         p_fcones.update(p_args)
-        p['futurecones'] = p_fcones
+        p['futurecones'] = colors.convertColorsInDict(p_fcones)
     # links parameters:
     p_links = {'linewidth': 2.0,
                'linestyle': '-',
                'markevery': 3,
-               'color': color_scheme[default_colors['links']],
+               'color': default_colors['links'],
                'marker': 'o',
                'markersize': 5.0,
-               'markeredgecolor': color_scheme[default_colors['linksedge']],
-               'markerfacecolor': color_scheme[default_colors['linksface']]}
+               'markeredgecolor': default_colors['linksedge'],
+               'markerfacecolor': default_colors['linksface']}
     p_args = kwargs.pop('links', True)
     if isinstance(p_args, bool):
         if p_args:
-            p['links'] = p_links
+            p['links'] = colors.convertColorsInDict(p_links)
     else:
         p_links.update(p_args)
-        p['links'] = p_links
+        p['links'] = colors.convertColorsInDict(p_links)
     # event parameters:
     p_events = {'linewidth': 2.0,
                 'linestyle': '',
                 'marker': 'o',
                 'markersize': 7.0,
-                'markeredgecolor': color_scheme[default_colors['eventsedge']],
-                'markerfacecolor': color_scheme[default_colors['eventsface']]}
-    p_args = kwargs.pop('event', True)
+                'markeredgecolor': default_colors['eventsedge'],
+                'markerfacecolor': default_colors['eventsface']}
+    p_args = kwargs.pop('events', True)
     if isinstance(p_args, bool):
         if p_args:
-            p['event'] = p_events
+            p['events'] = colors.convertColorsInDict(p_events)
     else:
         p_events.update(p_args)
-        p['event'] = p_events
+        p['events'] = colors.convertColorsInDict(p_events)
     # labels parameters:
     p_labels = {'verticalalignment': 'top',
                 'horizontalalignment': 'right'}
     p_args = kwargs.pop('labels', True)
     if isinstance(p_args, bool):
         if p_args:
-            p['labels'] = p_labels
+            p['labels'] = colors.convertColorsInDict(p_labels)
     else:
         p_labels.update(p_args)
-        p['labels'] = p_labels
+        p['labels'] = colors.convertColorsInDict(p_labels)
     return p
 
 
 def dynamic_parameter(function: str, dim: int, timedepth: float,
-                      alpha_max: float) -> Callable[[Any], Any]:
+                      alpha_max: float) -> Callable[[float], float]:
     '''
     Returns a function handle to compute the `alpha` parameter for 
     lightcones, and also in dynamic plot mode for links and event.
@@ -270,17 +267,17 @@ def dynamic_parameter(function: str, dim: int, timedepth: float,
     _alpha_max: float = alpha_max
     _dimpower: int = dim - 1
     if function == 'linear':
-        def linear(value: Any) -> Any:
+        def linear(value: float) -> float:
             return np.heaviside(_timefade_sgn * value, 1.0) * \
                 _alpha_max * (_timefade * value + 1.0)
         return linear
     elif function == 'exponential':
-        def exponential(value: Any) -> Any:
+        def exponential(value: float) -> float:
             return np.heaviside(_timefade_sgn * value, 1.0) * \
                 _alpha_max * np.exp(_timefade * value)
         return exponential
     elif function == 'intensity':
-        def intensity(value: Any) -> Any:
+        def intensity(value: float) -> float:
             return np.heaviside(_timefade_sgn * value, 1.0) * \
                 _alpha_max / np.power(np.maximum(value, 0.0) + 1.0, _dimpower)
         return intensity
@@ -288,124 +285,9 @@ def dynamic_parameter(function: str, dim: int, timedepth: float,
         return NotImplemented
 
 
-def cone_plotter(ax: plta.Axes, is3D: bool, dim: int, timeaxis: int,
-                 plotting_params: Dict[str, Any],
-                 timesign: float, timeslice: float,
-                 timefade: str = '', timedepth: float = 0.0) -> \
-    Callable[[float, Union[np.ndarray, List[float]]],
-             Union[patches.Patch, np.ndarray]]:
-    '''
-    Returns a function handle to plot cones in 2D or 3D mode.
-    '''
-    _ax: plta.Axes = ax
-    _timeaxis: int = timeaxis
-    _plotting_cones: Dict[str, Any] = plotting_params
-    _timesign: float = timesign
-    _timeslice: float = timeslice
-    _isDynamic = str != ''
-    if _isDynamic:
-        try:
-            dyn_cones = dynamic_parameter(timefade, dim,
-                                          np.abs(timedepth),
-                                          _plotting_cones['alpha'])
-        except KeyError:
-            dyn_cones = dynamic_parameter(timefade, dim,
-                                          np.abs(timedepth), 1)
-    if is3D:
-        _samplesize = 32
-        if _timeaxis == 0:
-            _xaxis, _yaxis = 1, 2
-        elif _timeaxis == 1:
-            _xaxis, _yaxis = 2, 0
-        elif _timeaxis == 2:
-            _xaxis, _yaxis = 0, 1
-
-        def _cone3(t: float, coords: Union[np.ndarray, List[float]]) -> \
-                Union[patches.Patch, np.ndarray]:
-            '''
-            Creates a matplotlib surface plot for a 3D lightcone at time 
-            coordinate t and originating from the coordinate triple coords. 
-            All keyword arguments are passed to the Poly3DCollection 
-            object.
-            '''
-            p: np.ndarray = None
-            r: float = _timesign * (_timeslice - t)
-            if r <= 0.0:  # radius non-positive
-                return None
-            elif _timeaxis < 0:  # no time axis, cone is a ball
-                p = np.empty((3, _samplesize, _samplesize))
-                phi = np.linspace(0, 2 * np.pi, _samplesize)
-                theta = np.linspace(0, np.pi, _samplesize)
-                p[0, :, :] = coords[0] + \
-                    r * np.outer(np.cos(phi), np.sin(theta))
-                p[1, :, :] = coords[1] + \
-                    r * np.outer(np.sin(phi), np.sin(theta))
-                p[2, :, :] = coords[2] + \
-                    r * np.outer(np.ones(_samplesize), np.cos(theta))
-            else:  # no time axis, cone is a proper cone
-                p = np.empty((3, 2, 100))
-                phi = np.linspace(0, 2 * np.pi, 100)
-                tscale = np.linspace(0, 1, 2)
-                p[_xaxis, :, :] = coords[_xaxis] + \
-                    r * np.outer(tscale, np.cos(phi))
-                p[_yaxis, :, :] = coords[_yaxis] + \
-                    r * np.outer(tscale, np.sin(phi))
-                p[_timeaxis, :, :] = coords[_timeaxis] + \
-                    _timesign * r * np.array([np.zeros(100), np.ones(100)])
-            if p is not None:
-                if _isDynamic:
-                    conealpha = dyn_cones(r)
-                    if conealpha <= 0.0:
-                        return None
-                    _plotting_cones.update({'alpha': conealpha})
-                _ax.plot_surface(p[0, :, :], p[1, :, :],
-                                 p[2, :, :], **_plotting_cones)
-            return p
-
-        return _cone3
-
-    else:
-        def _cone2(t: float, coords: Union[np.ndarray, List[float]]) -> \
-                Union[patches.Patch, np.ndarray]:
-            '''
-            Creates a matplotlib patch for a 2D lightcone at time coordinate 
-            t and originating from the coordinate pair coords. The patch is 
-            added to the axes. All keyword arguments are passed to the Patch 
-            object.
-            '''
-            p: patches.Patch = None
-            r: float = _timesign * (_timeslice - t)
-            if r <= 0.0:  # radius non-positive
-                return None
-            if _isDynamic:
-                conealpha = dyn_cones(r)
-                if conealpha <= 0.0:
-                    return None
-                _plotting_cones.update({'alpha': conealpha})
-            if _timeaxis < 0:  # without time axis, cone is a circle
-                p = patches.Circle(coords, radius=r, **_plotting_cones)
-            else:  # with time axis, cone is a triangle
-                if _timeaxis == 0:
-                    # time is along x-axis:
-                    p_arr = np.array([coords,
-                                      [_timeslice, coords[1] - r],
-                                      [_timeslice, coords[1] + r]])
-                else:
-                    # time is along y-axis:
-                    p_arr = np.array([coords,
-                                      [coords[0] - r, _timeslice],
-                                      [coords[0] + r, _timeslice]])
-                p = patches.Polygon(p_arr, **_plotting_cones)
-            if p is not None:
-                _ax.add_patch(p)
-            return p
-
-        return _cone2
-
-
-def Plotter(eventList: List[CausetEvent], coords: np.ndarray,
-            plotAxes: plta.Axes=None, **kwargs) -> \
-        Callable[[float], Dict[str, Any]]:
+def Plotter(eventList: List[CausetEvent], plotAxes: plta.Axes = None,
+            coordattr: str = 'Coordinates', spacetime: Spacetime = None,
+            **kwargs) -> Callable[[float], Dict[str, Any]]:
     '''
     Returns a Plotter function handle that requires the 'time' parameters, 
     which has to be an list or np.ndarray of (one or two) float values.
@@ -414,10 +296,14 @@ def Plotter(eventList: List[CausetEvent], coords: np.ndarray,
     None (default) it plots in the current axes. The function returns a 
     dictionary of plot object pointers. The keyword arguments are 
     explained in the doc of plot_parameters.
+
+    `eventList` is the list of event in the order they are plotted. 
+    `coordattr` has to be either 'Coordinates' or 'Position' to plot an 
+    embedded causet or a Hasse diagram, respectively.
     '''
     plotting: Dict[str, Any] = plot_parameters(**kwargs)
-    dim = coords.shape[1]
     is3d = plotting['3d']
+    dim: int = 3 if is3d else 2
     eventCount = len(eventList)
     if 'links' in plotting:
         linkCount = CausetEvent.LinkCountOf(set(eventList))
@@ -436,6 +322,8 @@ def Plotter(eventList: List[CausetEvent], coords: np.ndarray,
     _h = {}
     isPlottingPastcones: bool = 'pastcones' in plotting
     isPlottingFuturecones: bool = 'futurecones' in plotting
+    plot_spacetime: Spacetime = spacetime if spacetime is not None \
+        else FlatSpacetime(max(_xy_z) + 1)
 
     def _timeslice(time: np.ndarray) -> Dict[str, Any]:
         '''
@@ -444,36 +332,55 @@ def Plotter(eventList: List[CausetEvent], coords: np.ndarray,
         '''
         # plot cones:
         if isPlottingPastcones or isPlottingFuturecones:
+            temp_cone: Any
             if isPlottingPastcones:
-                _hpcn = [None] * eventCount
-                plotpcone = cone_plotter(ax, is3d, dim, plotting['timeaxis'],
-                                         plotting['pastcones'], -1, time[0],
-                                         plotting['conetimefade'],
-                                         plotting['conetimedepth'])
+                _hpcn: List[Any] = []
+                pcn_alpha_max: float
+                if plotting['conetimefade'] != '':
+                    try:
+                        pcn_alpha_max = plotting['pastcones']['alpha']
+                    except KeyError:
+                        pcn_alpha_max = 1.0
+                plotpcone: Any = plot_spacetime.LightconePlotter(
+                    ax, _xy_z, plotting['pastcones'], -1, time[0],
+                    dynamic_parameter(plotting['conetimefade'], dim,
+                                      abs(plotting['conetimedepth']),
+                                      pcn_alpha_max))
             if isPlottingFuturecones:
-                _hfcn = [None] * eventCount
-                plotfcone = cone_plotter(ax, is3d, dim, plotting['timeaxis'],
-                                         plotting['futurecones'], 1, time[-1],
-                                         plotting['conetimefade'],
-                                         plotting['conetimedepth'])
-            for i in range(eventCount):
-                c: np.ndarray = coords[i, :]
+                _hfcn: List[Any] = []
+                fcn_alpha_max: float
+                if plotting['conetimefade'] != '':
+                    try:
+                        fcn_alpha_max = plotting['pastcones']['alpha']
+                    except KeyError:
+                        fcn_alpha_max = 1.0
+                plotfcone: Any = plot_spacetime.LightconePlotter(
+                    ax, _xy_z, plotting['futurecones'], 1, time[-1],
+                    dynamic_parameter(plotting['conetimefade'], dim,
+                                      abs(plotting['conetimedepth']),
+                                      fcn_alpha_max))
+            for a in eventList:
+                c: np.ndarray = getattr(a, coordattr)
                 if isPlottingPastcones:
-                    _hpcn[i] = plotpcone(c[0], c[_xy_z])
+                    temp_cone = plotpcone(c)
+                    if temp_cone is not None:
+                        _hpcn.append(temp_cone)
                 if isPlottingFuturecones:
-                    _hfcn[i] = plotfcone(c[0], c[_xy_z])
+                    temp_cone = plotfcone(c)
+                    if temp_cone is not None:
+                        _hfcn.append(temp_cone)
         # plot links, event, labels:
         l: int = -1
+        c_a: np.ndarray
         if 'timedepth' in plotting:  # dynamic plots only
             t_depth = plotting['timedepth']
-            t_dist = coords[:, 0] - time[0]
             if 'links' in plotting:
                 plotting_links: Dict[str, Any] = plotting['links']
                 _hlnk = [None] * linkCount
             else:
                 plotting_links = {}
-            if 'event' in plotting:
-                plotting_events: Dict[str, Any] = plotting['event']
+            if 'events' in plotting:
+                plotting_events: Dict[str, Any] = plotting['events']
                 _hvnt = [None] * eventCount
             else:
                 plotting_events = {}
@@ -496,106 +403,118 @@ def Plotter(eventList: List[CausetEvent], coords: np.ndarray,
             except KeyError:
                 dyn_events = dynamic_parameter(plotting['timefade'],
                                                dim, t_depth, 1)
-            eventFade = dyn_events(t_dist)
             for i, a in enumerate(eventList):
+                i_t_dist = getattr(a, coordattr)[0] - time[0]
+                i_fade = dyn_events(i_t_dist)
+                c_a = getattr(a, coordattr)
                 if plotting_links:
                     for j in range(i + 1, eventCount):
-                        if not a.isLinkedTo(eventList[j]):
+                        b: CausetEvent = eventList[j]
+                        if not a.isLinkedTo(b):
                             continue
+                        j_t_dist = getattr(b, coordattr)[0] - time[0]
+                        j_fade = dyn_events(j_t_dist)
                         l += 1
-                        if (eventFade[i] > 0) and (eventFade[j] > 0):
-                            if np.abs(t_dist[i]) > np.abs(t_dist[j]):
+                        if (i_fade > 0) and (j_fade > 0):
+                            if np.abs(i_t_dist) > np.abs(j_t_dist):
                                 i_in, i_out = j, i
                             else:
                                 i_in, i_out = i, j
                             tau: float = 1.0
                             m = 3
-                        elif ((eventFade[i] > 0) or (eventFade[j] > 0)) and \
-                                (np.sign(t_dist[i]) != np.sign(t_dist[j])):
-                            if t_depth * t_dist[i] > 0:
+                        elif ((i_fade > 0) or (j_fade > 0)) and \
+                                (np.sign(i_t_dist) != np.sign(j_t_dist)):
+                            if t_depth * i_t_dist > 0:
                                 i_in, i_out = j, i
+                                i_out_t_dist = i_t_dist
                             else:
                                 i_in, i_out = i, j
-                            tau = np.abs(t_dist[i_out] /
-                                         (t_dist[i] - t_dist[j]))
+                                i_out_t_dist = j_t_dist
+                            tau = np.abs(i_out_t_dist /
+                                         (i_t_dist - j_t_dist))
                             m = 2
                         else:
                             continue
+                        c_out: np.ndarray = \
+                            getattr(eventList[i_out], coordattr)
                         linkTarget = (1 - tau) * \
-                            coords[i_out, :] + tau * coords[i_in, :]
-                        linkWidth = dyn_links(t_dist[i_out])
+                            c_out + tau * getattr(eventList[i_in], coordattr)
+                        linkWidth = dyn_links(i_out_t_dist)
                         if linkWidth > 0.0:
                             plotting_links.update({'alpha': linkWidth,
                                                    'markevery': m})
                             if is3d:
                                 _hlnk[l] = ax.plot(
-                                    [coords[i_out, _x], linkTarget[_x]],
-                                    [coords[i_out, _y], linkTarget[_y]],
-                                    [coords[i_out, _z], linkTarget[_z]],
+                                    [c_out[_x], linkTarget[_x]],
+                                    [c_out[_y], linkTarget[_y]],
+                                    [c_out[_z], linkTarget[_z]],
                                     **plotting_links)
                             else:
                                 _hlnk[l] = ax.plot(
-                                    [coords[i_out, _x], linkTarget[_x]],
-                                    [coords[i_out, _y], linkTarget[_y]],
+                                    [c_out[_x], linkTarget[_x]],
+                                    [c_out[_y], linkTarget[_y]],
                                     linewidth=linkWidth,
                                     **plotting_links)
-                if eventFade[i] <= 0:
+                if i_fade <= 0:
                     continue
                 if plotting_events:
-                    plotting_events.update({'alpha': eventFade[i]})
+                    plotting_events.update({'alpha': i_fade})
                     if is3d:
-                        _hvnt[i] = ax.plot([coords[i, _x]], [coords[i, _y]],
-                                           [coords[i, _z]],
+                        _hvnt[i] = ax.plot([c_a[_x]], [c_a[_y]], [c_a[_z]],
                                            **plotting_events)
                     else:
-                        _hvnt[i] = ax.plot([coords[i, _x]], [coords[i, _y]],
+                        _hvnt[i] = ax.plot([c_a[_x]], [c_a[_y]],
                                            **plotting_events)
                 if plotting_labels:
                     if is3d:
-                        _hlbl[i] = ax.text(coords[i, _x], coords[i, _y],
-                                           coords[i, _z], f' {a.Label} ',
+                        _hlbl[i] = ax.text(c_a[_x], c_a[_y], c_a[_z],
+                                           f' {a.Label} ',
                                            **plotting_labels)
                     else:
-                        _hlbl[i] = ax.text(coords[i, _x], coords[i, _y],
+                        _hlbl[i] = ax.text(c_a[_x], c_a[_y],
                                            f' {a.Label} ',
                                            **plotting_labels)
         else:  # static plots only
             if 'links' in plotting:
                 _hlnk = [None] * linkCount
                 for i, a in enumerate(eventList):
+                    c_a = getattr(a, coordattr)
                     for j in range(i + 1, eventCount):
+                        c_b: np.ndarray = getattr(eventList[j], coordattr)
                         if not a.isLinkedTo(eventList[j]):
                             continue
                         l += 1
                         if is3d:
-                            _hlnk[l] = ax.plot([coords[i, _x], coords[j, _x]],
-                                               [coords[i, _y], coords[j, _y]],
-                                               [coords[i, _z], coords[j, _z]],
+                            _hlnk[l] = ax.plot([c_a[_x], c_b[_x]],
+                                               [c_a[_y], c_b[_y]],
+                                               [c_a[_z], c_b[_z]],
                                                **plotting['links'])
                         else:
-                            _hlnk[l] = ax.plot([coords[i, _x], coords[j, _x]],
-                                               [coords[i, _y], coords[j, _y]],
+                            _hlnk[l] = ax.plot([c_a[_x], c_b[_x]],
+                                               [c_a[_y], c_b[_y]],
                                                **plotting['links'])
-            if 'event' in plotting:
+            if 'events' in plotting:
                 _hvnt = [None] * eventCount
-                for i in range(eventCount):
+                for i, a in enumerate(eventList):
+                    c_a = getattr(a, coordattr)
                     if is3d:
-                        _hvnt[i] = ax.plot([coords[i, _x]], [coords[i, _y]],
-                                           [coords[i, _z]],
-                                           **plotting['event'])
+                        _hvnt[i] = ax.plot([c_a[_x]], [c_a[_y]],
+                                           [c_a[_z]],
+                                           **plotting['events'])
                     else:
-                        _hvnt[i] = ax.plot([coords[i, _x]], [coords[i, _y]],
-                                           **plotting['event'])
+                        _hvnt[i] = ax.plot([c_a[_x]], [c_a[_y]],
+                                           **plotting['events'])
             if 'labels' in plotting:
                 _hlbl = [None] * eventCount
-                for i, e in enumerate(eventList):
+                for i, a in enumerate(eventList):
+                    c_a = getattr(a, coordattr)
                     if is3d:
-                        _hlbl[i] = ax.text(coords[i, _x], coords[i, _y],
-                                           coords[i, _z], f' {e.Label} ',
+                        _hlbl[i] = ax.text(c_a[_x], c_a[_y], c_a[_z],
+                                           f' {a.Label} ',
                                            **plotting['labels'])
                     else:
-                        _hlbl[i] = ax.text(coords[i, _x], coords[i, _y],
-                                           f' {e.Label} ',
+                        _hlbl[i] = ax.text(c_a[_x], c_a[_y],
+                                           f' {a.Label} ',
                                            **plotting['labels'])
         # set axis parameters:
         try:
@@ -614,8 +533,8 @@ def Plotter(eventList: List[CausetEvent], coords: np.ndarray,
             _h['futurecones'] = _hfcn
         if 'links' in plotting:
             _h['links'] = _hlnk
-        if 'event' in plotting:
-            _h['event'] = _hvnt
+        if 'events' in plotting:
+            _h['events'] = _hvnt
         if 'labels' in plotting:
             _h['labels'] = _hlbl
         return _h
@@ -623,13 +542,18 @@ def Plotter(eventList: List[CausetEvent], coords: np.ndarray,
     return _timeslice
 
 
-def plot(eventList: List[CausetEvent], coords: np.ndarray,
-         ax: plta.Axes=None, **kwargs) -> Dict[str, Any]:
+def plot(eventList: List[CausetEvent], ax: plta.Axes = None,
+         coordattr: str = 'Coordinates', spacetime: Spacetime = None,
+         **kwargs) -> Dict[str, Any]:
     '''
     Plots the event in eventList and their links to the Axes object ax 
     (or current axes by default). It returns a dictionary of plot object 
     pointers. The keyword arguments are explained in the doc of 
     plot_parameters.
+
+    `eventList` is the list of event in the order they are plotted. 
+    `coordattr` has to be either 'Coordinates' or 'Position' to plot an 
+    embedded causet or a Hasse diagram, respectively.
     '''
     time: np.ndarray = np.zeros(2)
     if 'time' in kwargs:
@@ -637,4 +561,4 @@ def plot(eventList: List[CausetEvent], coords: np.ndarray,
             time = kwargs['time']
         else:
             time = np.array([kwargs['time'], kwargs['time']])
-    return Plotter(eventList, coords, ax, **kwargs)(time)
+    return Plotter(eventList, ax, coordattr, spacetime, **kwargs)(time)
