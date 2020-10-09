@@ -15,7 +15,7 @@ import causet_plotting as cplt
 # radius 1.0. Coordinates range over a hollow cylinder with height 3.0.
 # 30% of the cylinder interior is hollow.
 S: CoordinateShape = CoordinateShape(3, 'cylinder', duration=3.0, hollow=0.3)
-C: SprinkledCauset = SprinkledCauset(intensity=250.0,
+C: SprinkledCauset = SprinkledCauset(intensity=100.0,
                                      spacetime=deSitterSpacetime(3), shape=S)
 e: CausetEvent = C.CentralAntichain().pop()  # pick one event
 
@@ -40,4 +40,9 @@ C.plot(eventList=[e], dims=dims,
        pastcones={'alpha': 1.0},
        futurecones={'alpha': 1.0},
        time=timeslices)
+ax: axes.Axes = plt.gca()
+ax.set_xlabel('space' if dims[0] > 0 else 'time')
+ax.set_ylabel('space' if dims[1] > 0 else 'time')
+if len(dims) > 2:
+    ax.set_zlabel('space' if dims[2] > 0 else 'time')
 plt.show()
