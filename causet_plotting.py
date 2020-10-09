@@ -43,6 +43,10 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     Pre-sets the default plot parameters and overwrites them with any of 
     the user-defined values. For a full set of possible plot properties, 
     consult the matplotlib documentation for the respective plot objects.
+    The `color_schemes` module adds support for local color schemes of 
+    research institutes. To use colors of a scheme, precede the color by 
+    'cs:', for example 'cs:blue' for the blue defined in the respective 
+    color scheme.
 
     >> General plot parameters:
     'dims': List[int]
