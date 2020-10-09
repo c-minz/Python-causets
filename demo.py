@@ -31,7 +31,7 @@ C.plot(dims=dims,
        links={'alpha': 0.1, 'linewidth': 0.5}, labels=False)
 C.plot(eventList=list(e.Cone), dims=dims,
        events={'markerfacecolor': 'cs:darkblue'},
-       links=False, labels=False)
+       links={'alpha': 0.6, 'linewidth': 1.5}, labels=False)
 # end times for past and future light-cone:
 timeslices: Tuple[float, float] = S.Limits(0)
 C.plot(eventList=[e], dims=dims,
