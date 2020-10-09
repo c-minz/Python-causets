@@ -115,7 +115,7 @@ class SprinkledCauset(EmbeddedCauset):
                     coords[:, 0] = rng.uniform(time_low, time_high,
                                                size=(count,))
                 # pick `count` random coordinate tuples uniformly:
-                r_low: float = shape.Parameter('hollow')
+                r_low: float = shape.Parameter('hollow')**b_d
                 for i in range(count):
                     # get coordinates on sphere using normal distribution:
                     coord: np.ndarray = rng.standard_normal(size=(b_d,))
