@@ -724,7 +724,7 @@ class Causet(object):
         that have a similar past and future cardinality (like event e if 
         specified).
         '''
-        # Compute the absolute sizes of past minus future lightcones:
+        # Compute the absolute sizes of past minus future cones:
         diff: int
         if e is None:
             diff = 0

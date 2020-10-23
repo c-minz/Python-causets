@@ -43,7 +43,7 @@ class EmbeddedCauset(Causet):
 
         `spacetime`: `Spacetime` object
         A spacetime object (including parameters) that determines the 
-        causality and lightcones. Default: `FlatSpacetime` of dimension `dim`.
+        causality. Default: `FlatSpacetime` of dimension `dim`.
 
         `shape`: str or `CoordinateShape` object
         (The name of) a coordinate shape object that ranges over the embedding 

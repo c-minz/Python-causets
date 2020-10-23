@@ -10,7 +10,7 @@ import numpy as np
 import math
 from matplotlib import patches, axes
 from shapes import BallSurface, OpenConeSurface, CoordinateShape, CircleEdge
-from builtins import int
+from calculations import NewtonsMethod as Newton
 
 
 class Spacetime(object):
@@ -85,16 +85,56 @@ class Spacetime(object):
             return (t_delta >= 0.0, t_delta < 0.0)
         return isCausal
 
-    def LightconePlotter(self, ax: axes.Axes, dims: List[int],
-                         plotting_params: Dict[str, Any],
-                         timesign: float, timeslice: float,
-                         dynamicAlpha: Callable[[float], float] = None) -> \
+    def _T_slice_sampling(self, t: float, origin: np.ndarray,
+                          samplesize: int = 32) -> np.ndarray:
+        '''
+        Internal function for the time sampling array for a cone from 
+        `origin` to time `t`.
+        '''
+        samplesize = int(samplesize * round(abs(t - origin[0]) / 50.0))
+        if samplesize <= 1:
+            samplesize = 2
+        elif samplesize >= 100:
+            samplesize = 100
+        return np.linspace(origin[0], t, samplesize)
+
+    def _XT_slice(self, t: float, origin: np.ndarray, xdim: int,
+                  samplesize: int = 32) -> np.ndarray:
+        '''
+        Internal function for the cone plotting from `origin` to time `t` 
+        projected onto a X-T (space-time) plane with space dimension `xdim`. 
+        '''
+        raise NotImplementedError()
+
+    def _XY_slice(self, t: float, origin: np.ndarray, dims: List[int],
+                  samplesize: int = 32) -> np.ndarray:
+        '''
+        Internal function for the cone plotting from `origin` to time `t` 
+        projected onto a X-Y (space-space) plane with space dimensions 
+        `dims`.
+        '''
+        raise NotImplementedError()
+
+    def _XYZ_slice(self, t: float, origin: np.ndarray, dims: List[int],
+                   samplesize: int = 32) -> \
+            Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        '''
+        Internal function for the cone plotting from `origin` to time `t` 
+        projected onto a X-Y-Z (space-space) plane with space dimensions 
+        `dims`.
+        '''
+        raise NotImplementedError()
+
+    def ConePlotter(self, ax: axes.Axes, dims: List[int],
+                    plotting_params: Dict[str, Any],
+                    timesign: float, timeslice: float,
+                    dynamicAlpha: Callable[[float], float] = None) -> \
             Callable[[np.ndarray],
                      Union[patches.Patch,
                            List[Tuple[np.ndarray, np.ndarray, np.ndarray]]]]:
         '''
         Returns a function handle to plot past (`timesign == -1`) or future 
-        (`timesign == 1`) light-cones for the spacetime `self` into the axes 
+        (`timesign == 1`) causal cones for the spacetime `self` into the axes 
         object `ax` up to the coordinate time `timeslice` with plotting 
         parameters given in the dictionary `plotting_params`. The time 
         coordinate goes along the axis with index `timeaxis`. As optional 
@@ -110,45 +150,76 @@ class Spacetime(object):
             timeaxis = dims.index(0)
         except ValueError:
             timeaxis = -1
+        xaxis: int = (timeaxis + 1) % len(dims)
+        yaxis: int = (timeaxis + 2) % len(dims)
 
-        def lightcone(origin: np.ndarray) -> \
+        def cone(origin: np.ndarray) -> \
                 Union[patches.Patch,
                       List[Tuple[np.ndarray, np.ndarray, np.ndarray]]]:
             '''
-            Creates matplotlib surface plots for a 3D lightcone, or a patch 
-            for a 2D lightcone added to the axes `ax`. The light emanates 
+            Creates matplotlib surface plots for a 3D causal cone, or a patch 
+            for a 2D causal cone added to the axes `ax`. The  emanates 
             from the coordinates `origin`, which has to be a `numpy` vector 
             with a length given by the coordinate dimensions of the spacetime.
             The keyword argument `plotting_params` (with a dynamically 
             adjusted 'alpha' parameter) are passed to `plot_surface` methods 
             if it is 3D or to the Patch objects if it is 2D.
 
-            The function returns `None` if no lightcone can be computed for 
+            The function returns `None` if no causal cone can be computed for 
             the respective input parameters.
             '''
             r: float = timesign * (timeslice - origin[0])
             if r <= 0.0:  # radius non-positive
-                return None
-            elif timeaxis > 0:  # time axis visible
                 return None
             if dynamicAlpha is not None:
                 conealpha = dynamicAlpha(r)
                 if conealpha <= 0.0:
                     return None
                 plotting_params.update({'alpha': conealpha})
-            origin = origin[dims]
+            XY: np.ndarray = None
+            T: np.ndarray
+            samplesize_t: int
+            if timeaxis >= 0:
+                T = self._T_slice_sampling(timeslice, origin)
+                samplesize_t = T.size
             if is3d:
-                XYZ: Tuple[np.ndarray, np.ndarray, np.ndarray] = \
-                    BallSurface(origin, r)
-                ax.plot_surface(*XYZ, **plotting_params)
-                return [XYZ]
+                X: np.ndarray
+                Y: np.ndarray
+                Z: np.ndarray
+                if timeaxis < 0:
+                    X, Y, Z = self._XYZ_slice(timeslice, origin, dims)
+                else:
+                    for i, t in enumerate(T):
+                        XY = self._XY_slice(t, origin,
+                                            [dims[xaxis], dims[yaxis]])
+                        if XY is None:
+                            return None
+                        elif i == 0:
+                            s: Tuple[int, int] = (samplesize_t, XY.shape[0])
+                            X, Y, Z = np.zeros(s), np.zeros(s), np.zeros(s)
+                        X[i, :], Y[i, :], Z[i, :] = XY[:, 0], XY[:, 1], t
+                    # rotate:
+                    if timeaxis == 0:
+                        X, Y, Z = Z, X, Y
+                    elif timeaxis == 1:
+                        X, Y, Z = Y, Z, X
+                ax.plot_surface(X, Y, Z, **plotting_params)
+                return [(X, Y, Z)]
             else:
-                p: patches.Patch = patches.Circle(origin, radius=r,
-                                                  **plotting_params)
+                if timeaxis < 0:
+                    XY = self._XY_slice(timeslice, origin, dims)
+                else:
+                    XY = self._XT_slice(timeslice, origin, dims[xaxis])
+                if XY is None:
+                    return None
+                # rotate:
+                if timeaxis == 0:
+                    XY = np.fliplr(XY)
+                p: patches.Patch = patches.Polygon(XY, **plotting_params)
                 ax.add_patch(p)
                 return p
 
-        return lightcone
+        return cone
 
 
 class FlatSpacetime(Spacetime):
@@ -206,18 +277,18 @@ class FlatSpacetime(Spacetime):
                 def isCausal_flat2D(x: np.ndarray,
                                     y: np.ndarray) -> Tuple[bool, bool]:
                     t_delta: float = y[0] - x[0]
-                    isConnected: bool = abs(t_delta) >= abs(y[1] - x[1])
-                    return ((t_delta >= 0.0) and isConnected,
-                            (t_delta < 0.0) and isConnected)
+                    isCausal: bool = abs(t_delta) >= abs(y[1] - x[1])
+                    return ((t_delta >= 0.0) and isCausal,
+                            (t_delta < 0.0) and isCausal)
                 return isCausal_flat2D
             else:
                 def isCausal_flat(x: np.ndarray,
                                   y: np.ndarray) -> Tuple[bool, bool]:
                     t_delta: float = y[0] - x[0]
-                    isConnected: bool = np.square(t_delta) >= \
+                    isCausal: bool = np.square(t_delta) >= \
                         sum(np.square(y[1:] - x[1:]))
-                    return ((t_delta >= 0.0) and isConnected,
-                            (t_delta < 0.0) and isConnected)
+                    return ((t_delta >= 0.0) and isCausal,
+                            (t_delta < 0.0) and isCausal)
                 return isCausal_flat
         else:
             _period: np.ndarray = self.Parameter('period')
@@ -228,9 +299,9 @@ class FlatSpacetime(Spacetime):
                     r_delta: float = abs(y[1] - x[1])
                     if _period[0] > 0.0:
                         r_delta = min(r_delta, _period[0] - r_delta)
-                    isConnected: bool = abs(t_delta) >= abs(r_delta)
-                    return ((t_delta >= 0.0) and isConnected,
-                            (t_delta < 0.0) and isConnected)
+                    isCausal: bool = abs(t_delta) >= abs(r_delta)
+                    return ((t_delta >= 0.0) and isCausal,
+                            (t_delta < 0.0) and isCausal)
                 return isCausal_flat2Dperiodic
             else:
                 def isCausal_flatperiodic(x: np.ndarray,
@@ -243,15 +314,15 @@ class FlatSpacetime(Spacetime):
                             r_delta_i = min(r_delta_i,
                                             _period[i - 1] - r_delta_i)
                         r2_delta += r_delta_i**2
-                    isConnected: bool = np.square(t_delta) >= r2_delta
-                    return ((t_delta >= 0.0) and isConnected,
-                            (t_delta < 0.0) and isConnected)
+                    isCausal: bool = np.square(t_delta) >= r2_delta
+                    return ((t_delta >= 0.0) and isCausal,
+                            (t_delta < 0.0) and isCausal)
                 return isCausal_flatperiodic
 
-    def LightconePlotter(self, ax: axes.Axes, dims: List[int],
-                         plotting_params: Dict[str, Any],
-                         timesign: float, timeslice: float,
-                         dynamicAlpha: Callable[[float], float] = None) -> \
+    def ConePlotter(self, ax: axes.Axes, dims: List[int],
+                    plotting_params: Dict[str, Any],
+                    timesign: float, timeslice: float,
+                    dynamicAlpha: Callable[[float], float] = None) -> \
             Callable[[np.ndarray],
                      Union[patches.Patch,
                            List[Tuple[np.ndarray, np.ndarray, np.ndarray]]]]:
@@ -307,7 +378,7 @@ class FlatSpacetime(Spacetime):
             else:
                 shifts = [np.array([0.0, 0.0])]
 
-        def lightcone(origin: np.ndarray) -> \
+        def cone(origin: np.ndarray) -> \
                 Union[patches.Patch,
                       List[Tuple[np.ndarray, np.ndarray, np.ndarray]]]:
             r: float = timesign * (timeslice - origin[0])
@@ -328,11 +399,6 @@ class FlatSpacetime(Spacetime):
                 for XYZ in XYZ_list:
                     ax.plot_surface(*XYZ, **plotting_params)
                 return XYZ_list
-            elif (timeaxis < 0) and (len(shifts) == 1):
-                p_circle: patches.Patch = patches.Circle(origin, radius=r,
-                                                         **plotting_params)
-                ax.add_patch(p_circle)
-                return p_circle
             else:
                 XY: np.array = None
                 XYpart: np.array
@@ -358,27 +424,82 @@ class FlatSpacetime(Spacetime):
                 ax.add_patch(p)
                 return p
 
-        return lightcone
+        return cone
 
 
-class deSitterSpacetime(Spacetime):
+class _dSSpacetime(Spacetime):
     '''
-    Implementation of de Sitter spacetimes.
+    Implementation of the base class for de Sitter and Anti-de Sitter 
+    spacetimes.
     '''
 
-    def __init__(self, dim: int,
-                 r_dS: float = 1.0) -> None:
+    _alpha: float
+    _alpha_sq: float
+
+    def __init__(self, dim: int, alpha: float = 1.0) -> None:
         '''
-        Initializes de Sitter spacetime for dim >= 2.
-        It is parametrized by the radius of the cosmological radius `r_dS` 
-        as float.
+        Initializes (Anti) de Sitter spacetime for dim >= 2.
+        It is parametrized by `alpha` as float.
         '''
         if dim < 2:
             raise ValueError('The spacetime dimension has to be at least 2.')
         super().__init__()
         self._dim = dim
-        self._name = 'de Sitter'
         self._metricname = 'static'
+        self._alpha = alpha
+        self._alpha_sq = alpha**2
+
+    def Causality(self) -> Callable[[np.ndarray, np.ndarray],
+                                    Tuple[bool, bool]]:
+        raise NotImplementedError()
+
+    def _XT_slice2(self, t: float, t0: float,
+                   x0: float) -> Tuple[float, float]:
+        raise NotImplementedError()
+
+    def _XT_slice(self, t: float, origin: np.ndarray, xdim: int,
+                  samplesize: int = 32) -> np.ndarray:
+        T: np.ndarray = self._T_slice_sampling(t, origin, samplesize)
+        XT: np.ndarray = np.zeros((2 * T.size - 1, 2))
+        if origin.size == 2:
+            x0: float = origin[1] / self._alpha
+            if abs(x0) >= 1.0:
+                return None
+            for i, t in enumerate(T):
+                r: Tuple[float, float] = self._XT_slice2(t, origin[0], x0)
+                XT[-i, 0], XT[i, 0] = min(r), max(r)
+                XT[-i, 1], XT[i, 1] = t, t
+        else:
+            t_X: np.ndarray
+            for i, t in enumerate(T):
+                x_min: float = np.PINF
+                x_max: float = np.NINF
+                for ydim in range(1, origin.size):
+                    if ydim == xdim:
+                        continue
+                    t_X = self._XY_slice(t, origin, [xdim, ydim], samplesize)
+                    if t_X is None:
+                        return None
+                    x_min = np.min([x_min, np.min(t_X[:, 0])])
+                    x_max = np.max([x_max, np.max(t_X[:, 0])])
+                XT[-i, 0], XT[i, 0] = x_min, x_max
+                XT[-i, 1], XT[i, 1] = t, t
+        return XT
+
+
+class deSitterSpacetime(_dSSpacetime):
+    '''
+    Implementation of de Sitter spacetimes, which are globally hyperbolic.
+    '''
+
+    def __init__(self, dim: int, r_dS: float = 1.0) -> None:
+        '''
+        Initializes de Sitter spacetime for dim >= 2.
+        It is parametrized by the radius of the cosmological radius `r_dS` 
+        as float.
+        '''
+        super().__init__(dim, r_dS)
+        self._name = 'de Sitter'
         if r_dS > 0.0:
             self._params = {'r_dS': r_dS}
         else:
@@ -387,165 +508,97 @@ class deSitterSpacetime(Spacetime):
 
     def Causality(self) -> Callable[[np.ndarray, np.ndarray],
                                     Tuple[bool, bool]]:
-        _r_dS: float = self.Parameter('r_dS')
-        _r_dS_2: float = _r_dS**2
 
         def isCausal_dS(x: np.ndarray,
                         y: np.ndarray) -> Tuple[bool, bool]:
             r2_x: float = sum(np.square(x[1:]))
             r2_y: float = sum(np.square(y[1:]))
-            if (r2_x >= _r_dS_2) or (r2_y >= _r_dS_2):
+            if (r2_x >= self._alpha_sq) or (r2_y >= self._alpha_sq):
                 return (False, False)
-            amp_x: float = math.sqrt(_r_dS_2 - r2_x)
-            amp_y: float = math.sqrt(_r_dS_2 - r2_y)
-            x0_x: float = amp_x * math.sinh(x[0] / _r_dS)
-            x1_x: float = amp_x * math.cosh(x[0] / _r_dS)
-            x0_y: float = amp_y * math.sinh(y[0] / _r_dS)
-            x1_y: float = amp_y * math.cosh(y[0] / _r_dS)
+            amp_x: float = math.sqrt(self._alpha_sq - r2_x)
+            amp_y: float = math.sqrt(self._alpha_sq - r2_y)
+            x0_x: float = amp_x * math.sinh(x[0] / self._alpha)
+            x1_x: float = amp_x * math.cosh(x[0] / self._alpha)
+            x0_y: float = amp_y * math.sinh(y[0] / self._alpha)
+            x1_y: float = amp_y * math.cosh(y[0] / self._alpha)
             x0_delta: float = x0_y - x0_x
-            isConnected: bool = x0_delta**2 >= \
+            isCausal: bool = x0_delta**2 >= \
                 sum(np.square(y[1:] - x[1:])) + (x1_y - x1_x)**2
-            return ((x0_delta >= 0.0) and isConnected,
-                    (x0_delta < 0.0) and isConnected)
+            return ((x0_delta >= 0.0) and isCausal,
+                    (x0_delta < 0.0) and isCausal)
         return isCausal_dS
 
-    def LightconePlotter(self, ax: axes.Axes, dims: List[int],
-                         plotting_params: Dict[str, Any],
-                         timesign: float, timeslice: float,
-                         dynamicAlpha: Callable[[float], float] = None) -> \
-            Callable[[np.ndarray],
-                     Union[patches.Patch,
-                           List[Tuple[np.ndarray, np.ndarray, np.ndarray]]]]:
-        is3d: bool = len(dims) == 3
-        timeaxis: int
-        xaxis: int
-        yaxis: int
-        try:
-            timeaxis = dims.index(0)
-        except ValueError:
-            timeaxis = -1
-        xaxis = dims[(timeaxis + 1) % len(dims)]
-        yaxis = dims[(timeaxis + 2) % len(dims)]
-        _r_dS: float = self.Parameter('r_dS')
-        _r_dS_sq: float = _r_dS**2
+    def _T_slice_sampling(self, t: float, origin: np.ndarray,
+                          samplesize: int = 32) -> np.ndarray:
+        samples: int = min(samplesize * round(abs(t - origin[0]) /
+                                              self._alpha) + 2, samplesize)
+        return np.linspace(origin[0], t, samples)
 
-        def XYtimeslice(t: float, origin: np.ndarray,
-                        Theta: float = 1.0, samplesize: int = 30) -> np.ndarray:
-            '''
-            Returns a numpy matrix of (x, y) coordinate pairs that describe 
-            the lightcone slice at time t, where `origin` is the embedding 
-            coordinates of the cone tip. If there exists no coneslice at 
-            time coordinate t, `None` is returned.
-            '''
-            # Define initial values `(t0, r0, phi0, Theta)` from `origin`,
-            # where Theta is the product of all remaining angular components,
-            # like sin(theta) in 4 dimensions.
-            r0_sq: float = np.sum(np.square(origin[1:])) / _r_dS_sq
-            if r0_sq == 0.0:
-                r0_sq = 0.0001
-            elif r0_sq >= 1.0:
-                return None
-            t0: float = origin[0]
-            phi0: float = np.arctan2(origin[yaxis], origin[xaxis])
-            Theta0: float = origin[xaxis] / (np.sqrt(r0_sq) * np.cos(phi0))
-            if (Theta < 0.0) or (Theta > 1.0):
-                Theta = Theta0
-            # Define initial value range for the angular velocities
-            # omega = d phi / d t, scaled by the initial radius, beta forwards
-            # and beta backwards. The factor `(1.0 - 1.0 / samplesize**2)` is to
-            # avoid a 90deg angle that could give a divergent term (and
-            # duplicate data points).
-            beta_fw: np.ndarray = np.linspace(0.001,
-                                              ((1.0 - 1.0 / samplesize**2) *
-                                               r0_sq / (1 - r0_sq))**0.75,
-                                              samplesize)**(1.0 / 1.5)
-            beta_bw: np.ndarray = -np.flip(beta_fw[1:])
-            # Compute the solution in the 4 quadrants:
-            XY: np.ndarray = np.empty((4 * samplesize - 1, 2))
-            i_start: int = 0
-            for s, beta in [(1, beta_fw), (-1, beta_bw),
-                            (-1, beta_fw), (1, beta_bw)]:
-                beta_sq: np.ndarray = np.square(beta)
-                rho_beta: np.ndarray = np.sqrt(r0_sq * (1 + beta_sq) - beta_sq)
-                rhot_tanh = np.tanh(np.arctanh(rho_beta) +
-                                    np.copysign(t - t0, s) / _r_dS)
-                r = np.sqrt((np.square(rhot_tanh) + beta_sq) / (1 + beta_sq))
-                delta_phi = (np.arctan(rhot_tanh / beta) -
-                             np.arctan(rho_beta / beta)) / Theta
-                i_end: int = i_start + len(beta)
-                XY[i_start:i_end, 0] = r * Theta0 * np.cos(phi0 + delta_phi)
-                XY[i_start:i_end, 1] = r * Theta0 * np.sin(phi0 + delta_phi)
-                i_start = i_end
-            XY[-1, :] = XY[0, :]
-            return XY
+    def _XT_slice2(self, t: float, t0: float,
+                   x0: float) -> Tuple[float, float]:
+        return (self._alpha * np.tanh(np.arctanh(x0) - (t - t0) / self._alpha),
+                self._alpha * np.tanh(np.arctanh(x0) + (t - t0) / self._alpha))
 
-        def lightcone(origin: np.ndarray) -> \
-                Union[patches.Patch,
-                      List[Tuple[np.ndarray, np.ndarray, np.ndarray]]]:
-            r: float = timesign * (timeslice - origin[0])
-            if r <= 0.0:  # radius non-positive
-                return None
-            if dynamicAlpha is not None:
-                conealpha = dynamicAlpha(r)
-                if conealpha <= 0.0:
-                    return None
-                plotting_params.update({'alpha': conealpha})
-            XY: np.ndarray = None
-            if is3d:
-                if timeaxis < 0:
-                    return None
-                samplesize_phi: int = 30
-                samplesize_t: int = min(32 * round(r / _r_dS) + 2, 100)
-                T: np.ndarray = np.linspace(origin[0], timeslice, samplesize_t)
-                X: np.ndarray = np.zeros(
-                    (samplesize_t, 4 * samplesize_phi - 1))
-                Y: np.ndarray = np.zeros(
-                    (samplesize_t, 4 * samplesize_phi - 1))
-                Z: np.ndarray = np.zeros(
-                    (samplesize_t, 4 * samplesize_phi - 1))
-                for i, t in enumerate(T):
-                    XY = XYtimeslice(t, origin, samplesize=samplesize_phi)
-                    if XY is None:
-                        return None
-                    X[i, :] = XY[:, 0]
-                    Y[i, :] = XY[:, 1]
-                    Z[i, :] = t
-                # rotate:
-                if timeaxis == 0:
-                    X, Y, Z = Z, X, Y
-                elif timeaxis == 1:
-                    X, Y, Z = Y, Z, X
-                ax.plot_surface(X, Y, Z, **plotting_params)
-                return [(X, Y, Z)]
-            else:
-                if timeaxis < 0:
-                    XY = XYtimeslice(timeslice, origin)
-                if XY is None:
-                    return None
-                p: patches.Patch = patches.Polygon(XY, **plotting_params)
-                ax.add_patch(p)
-                return p
-
-        return lightcone
+    def _XY_slice(self, t: float, origin: np.ndarray, dims: List[int],
+                  samplesize: int = 30) -> np.ndarray:
+        # Define initial values `(t0, r0, phi0, Theta0)` from `origin`,
+        # where Theta0 is the product of all remaining angular components,
+        # like sin(theta0) in 4 dimensions.
+        r0_sq: float = np.sum(np.square(origin[1:])) / self._alpha_sq
+        if r0_sq == 0.0:
+            r0_sq = 0.0001
+        elif r0_sq >= 1.0:
+            return None
+        t0: float = origin[0]
+        phi0: float = np.arctan2(origin[dims[1]], origin[dims[0]])
+        Theta0: float = origin[dims[0]] / (np.sqrt(r0_sq) * np.cos(phi0))
+        # Define initial value range for the angular velocities
+        # omega = d phi / d t, scaled by the initial radius, beta forwards
+        # and beta backwards. The factor `(1.0 - 1.0 / samplesize**2)` is to
+        # avoid a 90deg angle that could give a divergent term (and
+        # duplicate data points).
+        beta_fw: np.ndarray = np.linspace(0.001,
+                                          ((1.0 - 1.0 / samplesize**2) *
+                                           r0_sq / (1 - r0_sq))**0.75,
+                                          samplesize)**(1.0 / 1.5)
+        beta_bw: np.ndarray = -np.flip(beta_fw[1:])
+        # Compute the solution in the 4 quadrants:
+        XY: np.ndarray = np.empty((4 * samplesize - 1, 2))
+        i_start: int = 0
+        for s, beta in [(1, beta_fw), (-1, beta_bw),
+                        (-1, beta_fw), (1, beta_bw)]:
+            beta_sq: np.ndarray = np.square(beta)
+            rho_beta: np.ndarray = np.sqrt(r0_sq * (1 + beta_sq) - beta_sq)
+            rhot_tanh: np.ndarray = np.tanh(np.arctanh(rho_beta) +
+                                            np.copysign(t - t0, s) / self._alpha)
+            r = self._alpha * \
+                np.sqrt((np.square(rhot_tanh) + beta_sq) / (1 + beta_sq))
+            delta_phi = (np.arctan(rhot_tanh / beta) -
+                         np.arctan(rho_beta / beta)) / Theta0
+            i_end: int = i_start + len(beta)
+            XY[i_start:i_end, 0] = r * Theta0 * np.cos(phi0 + delta_phi)
+            XY[i_start:i_end, 1] = r * Theta0 * np.sin(phi0 + delta_phi)
+            i_start = i_end
+        XY[-1, :] = XY[0, :]
+        return XY
 
 
-class AntideSitterSpacetime(Spacetime):
+class AntideSitterSpacetime(_dSSpacetime):
     '''
-    Implementation of Anti-de Sitter spacetimes.
+    Implementation of anti-de Sitter spacetimes. Note that anti-de Sitter 
+    spacetimes are not globally hyperbolic, so that infinite sprinkles on 
+    AdS can break the finiteness axiom of causal sets.
+
+    The past- and future- causal cone plotting is not implemented.
     '''
 
-    def __init__(self, dim: int,
-                 r_AdS: float = 0.5) -> None:
+    def __init__(self, dim: int, r_AdS: float = 0.5) -> None:
         '''
         Initializes Anti-de Sitter spacetime for dim >= 2.
         It is parametrized by `r_AdS` as float.
         '''
-        if dim < 2:
-            raise ValueError('The spacetime dimension has to be at least 2.')
-        super().__init__()
-        self._dim = dim
+        super().__init__(dim, r_AdS)
         self._name = 'Anti-de Sitter'
-        self._metricname = 'static'
         if r_AdS > 0.0:
             self._params = {'r_AdS': r_AdS}
         else:
@@ -554,146 +607,30 @@ class AntideSitterSpacetime(Spacetime):
 
     def Causality(self) -> Callable[[np.ndarray, np.ndarray],
                                     Tuple[bool, bool]]:
-        _r_AdS: float = self.Parameter('r_AdS')
-        _r_AdS_2: float = _r_AdS**2
 
         def isCausal_AdS(x: np.ndarray,
                          y: np.ndarray) -> Tuple[bool, bool]:
-            amp_x: float = math.sqrt(_r_AdS_2 + sum(np.square(x[1:])))
-            amp_y: float = math.sqrt(_r_AdS_2 + sum(np.square(y[1:])))
-            x0_x: float = amp_x * math.sin(x[0] / _r_AdS)
-            x1_x: float = amp_x * math.cos(x[0] / _r_AdS)
-            x0_y: float = amp_y * math.sin(y[0] / _r_AdS)
-            x1_y: float = amp_y * math.cos(y[0] / _r_AdS)
+            amp_x: float = math.sqrt(self._alpha_sq + sum(np.square(x[1:])))
+            amp_y: float = math.sqrt(self._alpha_sq + sum(np.square(y[1:])))
+            x0_x: float = amp_x * math.sin(x[0] / self._alpha)
+            x1_x: float = amp_x * math.cos(x[0] / self._alpha)
+            x0_y: float = amp_y * math.sin(y[0] / self._alpha)
+            x1_y: float = amp_y * math.cos(y[0] / self._alpha)
             x0_delta: float = x0_y - x0_x
-            isConnected: bool = x0_delta**2 + (x1_y - x1_x)**2 >= \
+            isCausal: bool = x0_delta**2 + (x1_y - x1_x)**2 >= \
                 sum(np.square(y[1:] - x[1:]))
-            return ((x0_delta >= 0.0) and isConnected,
-                    (x0_delta < 0.0) and isConnected)
+            return ((x0_delta >= 0.0) and isCausal,
+                    (x0_delta < 0.0) and isCausal)
         return isCausal_AdS
-
-    def LightconePlotter(self, ax: axes.Axes, dims: List[int],
-                         plotting_params: Dict[str, Any],
-                         timesign: float, timeslice: float,
-                         dynamicAlpha: Callable[[float], float] = None) -> \
-            Callable[[np.ndarray],
-                     Union[patches.Patch,
-                           List[Tuple[np.ndarray, np.ndarray, np.ndarray]]]]:
-        is3d: bool = len(dims) == 3
-        timeaxis: int
-        xaxis: int
-        yaxis: int
-        try:
-            timeaxis = dims.index(0)
-        except ValueError:
-            timeaxis = -1
-        xaxis = dims[(timeaxis + 1) % len(dims)]
-        yaxis = dims[(timeaxis + 2) % len(dims)]
-        _r_AdS: float = self.Parameter('r_AdS')
-        _r_AdS_sq: float = _r_AdS**2
-
-        def XYtimeslice(t: float, origin: np.ndarray,
-                        Theta: float = 1.0, samplesize: int = 30) -> np.ndarray:
-            '''
-            Returns a numpy matrix of (x, y) coordinate pairs that describe 
-            the lightcone slice at time t, where `origin` is the embedding 
-            coordinates of the cone tip. If there exists no coneslice at 
-            time coordinate t, `None` is returned.
-            '''
-            # Define initial values `(t0, r0, phi0, Theta)` from `origin`,
-            # where Theta is the product of all remaining angular components,
-            # like sin(theta) in 4 dimensions.
-            r0_sq: float = np.sum(np.square(origin[1:])) / _r_AdS_sq
-            if r0_sq == 0.0:
-                r0_sq = 0.0001
-            t0: float = origin[0]
-            phi0: float = np.arctan2(origin[yaxis], origin[xaxis])
-            Theta0: float = origin[xaxis] / (np.sqrt(r0_sq) * np.cos(phi0))
-            if (Theta < 0.0) or (Theta > 1.0):
-                Theta = Theta0
-            # Define initial value range for the angular velocities
-            # omega = d phi / d t, scaled by the initial radius, beta forwards
-            # and beta backwards. The factor `(1.0 - 1.0 / samplesize**2)` is to
-            # avoid a 90deg angle that could give a divergent term (and
-            # duplicate data points).
-            beta_fw: np.ndarray = np.linspace(0.001,
-                                              ((1.0 - 1.0 / samplesize**2) *
-                                               r0_sq / (1 + r0_sq))**0.75,
-                                              samplesize)**(1.0 / 1.5)
-            beta_bw: np.ndarray = -np.flip(beta_fw[1:])
-            # Compute the solution in the 4 quadrants:
-            XY: np.ndarray = np.empty((4 * samplesize - 1, 2))
-            i_start: int = 0
-            for s, beta in [(1, beta_fw), (-1, beta_bw),
-                            (-1, beta_fw), (1, beta_bw)]:
-                beta_sq: np.ndarray = np.square(beta)
-                rho_beta: np.ndarray = np.sqrt(r0_sq * (1 - beta_sq) - beta_sq)
-                rhot_tanh = np.tanh(np.arctanh(rho_beta) +
-                                    np.copysign(t - t0, s) / _r_AdS)
-                r = np.sqrt((np.square(rhot_tanh) + beta_sq) / (1 - beta_sq))
-                delta_phi = (np.arctan(rhot_tanh / beta) -
-                             np.arctan(rho_beta / beta)) / Theta
-                i_end: int = i_start + len(beta)
-                XY[i_start:i_end, 0] = r * Theta0 * np.cos(phi0 + delta_phi)
-                XY[i_start:i_end, 1] = r * Theta0 * np.sin(phi0 + delta_phi)
-                i_start = i_end
-            XY[-1, :] = XY[0, :]
-            return XY
-
-        def lightcone(origin: np.ndarray) -> \
-                Union[patches.Patch,
-                      List[Tuple[np.ndarray, np.ndarray, np.ndarray]]]:
-            r: float = timesign * (timeslice - origin[0])
-            if r <= 0.0:  # radius non-positive
-                return None
-            if dynamicAlpha is not None:
-                conealpha = dynamicAlpha(r)
-                if conealpha <= 0.0:
-                    return None
-                plotting_params.update({'alpha': conealpha})
-            XY: np.ndarray = None
-            if is3d:
-                if timeaxis < 0:
-                    return None
-                samplesize_phi: int = 30
-                samplesize_t: int = min(32 * round(r / _r_AdS) + 2, 100)
-                T: np.ndarray = np.linspace(origin[0], timeslice, samplesize_t)
-                X: np.ndarray = np.zeros(
-                    (samplesize_t, 4 * samplesize_phi - 1))
-                Y: np.ndarray = np.zeros(
-                    (samplesize_t, 4 * samplesize_phi - 1))
-                Z: np.ndarray = np.zeros(
-                    (samplesize_t, 4 * samplesize_phi - 1))
-                for i, t in enumerate(T):
-                    XY = XYtimeslice(t, origin, samplesize=samplesize_phi)
-                    if XY is None:
-                        return None
-                    X[i, :] = XY[:, 0]
-                    Y[i, :] = XY[:, 1]
-                    Z[i, :] = t
-                # rotate:
-                if timeaxis == 0:
-                    X, Y, Z = Z, X, Y
-                elif timeaxis == 1:
-                    X, Y, Z = Y, Z, X
-                ax.plot_surface(X, Y, Z, **plotting_params)
-                return [(X, Y, Z)]
-            else:
-                if timeaxis < 0:
-                    XY = XYtimeslice(timeslice, origin)
-                if XY is None:
-                    return None
-                p: patches.Patch = patches.Polygon(XY, **plotting_params)
-                ax.add_patch(p)
-                return p
-
-        return lightcone
 
 
 class BlackHoleSpacetime(Spacetime):
     '''
-    Implementation of black hole spacetimes.
+    Implementation of black hole spacetimes, which are globally 
+    hyperbolic.
     '''
+
+    _r_S: float
 
     def __init__(self, dim: int,
                  r_S: float = 0.5,
@@ -717,22 +654,80 @@ class BlackHoleSpacetime(Spacetime):
             raise ValueError(f'The metric {metric} is not implemented.')
         if r_S > 0.0:
             self._params = {'r_S': r_S}
+            self._r_S = r_S
         else:
             raise ValueError(f'The Schwarzschild radius has to be positive.')
 
     def __repr__(self):
-        _r_S: float = self.Parameter('r_S')
         return f'{self.__class__.__name__}({self._dim}, ' + \
-            f'r_S={_r_S}, metric={self._metricname})'
+            f'r_S={self._r_S}, metric={self._metricname})'
+
+    def _light_EF(self, t0: float, r0: float, ingoing: bool = False,
+                  derivative: int = 0) -> Callable[[Any], Any]:
+        '''
+        Returns the -cone function (and its derivatives) for `ingoing` 
+        and outgoing radial lightrays starting at (t0, r0), for the 
+        Eddington-Finkelstein metric.
+        '''
+        if derivative == 0:
+            if ingoing:
+                def _lightray_in(r: Any) -> Any:
+                    return r0 - r + t0
+                return _lightray_in
+            else:
+                def _lightray_out(r: Any) -> Any:
+                    return r - r0 + t0 + 2.0 * self._r_S * \
+                        np.log(np.abs((r - self._r_S) / (r0 - self._r_S)))
+                return _lightray_out
+        elif derivative == 1:
+            if not ingoing:
+                def _lightray_d1_out(r: Any) -> Any:
+                    return 1.0 + 2.0 * self._r_S / (r - self._r_S)
+                return _lightray_d1_out
+
+        raise NotImplementedError()
+
+    def _light_S(self, t0: float, r0: float, ingoing: bool = False,
+                 derivative: int = 0) -> Callable[[Any], Any]:
+        '''
+        Returns the -cone function (and its derivatives) for `ingoing` 
+        and outgoing radial lightrays starting at (t0, r0), for the 
+        Schwarzschild metric.
+        '''
+        if derivative == 0:
+            if ingoing:
+                def _lightray_in(r: Any) -> Any:
+                    return r0 - r + t0 - self._r_S * \
+                        np.log(np.abs((r - self._r_S) / (r0 - self._r_S)))
+                return _lightray_in
+            else:
+                def _lightray_out(r: Any) -> Any:
+                    return r - r0 + t0 + self._r_S * \
+                        np.log(np.abs((r - self._r_S) / (r0 - self._r_S)))
+                return _lightray_out
+        elif derivative == 1:
+            if ingoing:
+                def _lightray_d1_in(r: Any) -> Any:
+                    return -1.0 - self._r_S / (r - self._r_S)
+                return _lightray_d1_in
+            else:
+                def _lightray_d1_out(r: Any) -> Any:
+                    return 1.0 + self._r_S / (r - self._r_S)
+                return _lightray_d1_out
+
+        raise NotImplementedError()
 
     def Causality(self) -> Callable[[np.ndarray, np.ndarray],
                                     Tuple[bool, bool]]:
         if self.Dim == 1:
             return super().Causality()
-        _r_S: float = self.Parameter('r_S')
-        _isSchwarzschildMetric: bool = self._metricname == 'Schwarzschild'
+        isSchwarzschildMetric: bool = self._metricname == 'Schwarzschild'
 
         if self.Dim == 2:
+            _func: Callable[[Any], Any] = self._light_S(0.0, 0.0) \
+                if isSchwarzschildMetric \
+                else self._light_EF(0.0, 0.0)
+
             def isCausal_BH2D(x: np.ndarray,
                               y: np.ndarray) -> Tuple[bool, bool]:
                 if x[1] * y[1] < 0.0:
@@ -741,7 +736,8 @@ class BlackHoleSpacetime(Spacetime):
                 r_x: float = abs(x[1])
                 r_y: float = abs(y[1])
                 isSwapped: bool = False
-                if _isSchwarzschildMetric and ((r_x < _r_S) or (r_y < _r_S)):
+                if isSchwarzschildMetric and ((r_x < self._r_S) or
+                                              (r_y < self._r_S)):
                     # Schwarzschild metric and at least one is inside
                     isSwapped = r_x < r_y  # order s.t. r_y <= r_x
                 else:  # EddFin metric, or both points are outside
@@ -749,27 +745,109 @@ class BlackHoleSpacetime(Spacetime):
                 if isSwapped:  # swap
                     x, y = y, x
                     r_x, r_y = r_y, r_x
-                isConnected: bool = False
-                t_out: float
-                t_in: float
-                if _isSchwarzschildMetric:
-                    t_out = r_y - r_x + _r_S * \
-                        math.log(abs((r_y - _r_S) / (r_x - _r_S)))
-                    t_in = -t_out
-                else:
-                    t_out = r_y - r_x + 2 * _r_S * \
-                        math.log(abs((r_y - _r_S) / (r_x - _r_S)))
-                    t_in = r_x - r_y
-                if r_y <= r_x <= _r_S:  # x is inside, y is further inside
-                    isConnected = t_out >= t_delta >= t_in
-                elif _r_S <= r_x >= r_y:  # x is outside, y is within radius x
-                    isConnected = t_delta >= t_in
-                elif _r_S <= r_x <= r_y:  # x is outside, y is further outside
-                    isConnected = t_delta >= t_out
-                if isSwapped:
-                    return (False, isConnected)
-                else:
-                    return (isConnected, False)
+                    t_delta = -t_delta
+                isCausal: bool = False
+                t_out: float = _func(r_y) - _func(r_x)
+                t_in: float = -t_out if isSchwarzschildMetric \
+                    else r_x - r_y
+                if r_y <= r_x <= self._r_S:  # x is inside, y is further inside
+                    isCausal = t_out >= t_delta >= t_in
+                elif self._r_S <= r_x >= r_y:  # x is outside, y is within radius x
+                    isCausal = t_delta >= t_in
+                elif self._r_S <= r_x <= r_y:  # x is outside, y is further outside
+                    isCausal = t_delta >= t_out
+                return (False, isCausal) if isSwapped else (isCausal, False)
             return isCausal_BH2D
 
-        return NotImplemented
+        raise NotImplementedError()
+
+    def _XT_slice(self, t: float, origin: np.ndarray, xdim: int,
+                  samplesize: int = 32) -> np.ndarray:
+        r_0: float = abs(origin[xdim])
+        r_out: float = r_0
+        r_in: float = r_0
+        XT: np.ndarray
+        X: np.ndarray
+        n: int
+        f_out: Callable[[float], float]
+        fd_out: Callable[[float], float]
+        if self._metricname == 'Schwarzschild':
+            f_in: Callable[[float], float] = \
+                self._light_S(origin[0], r_0, True)
+            fd_in: Callable[[float], float] = \
+                self._light_S(origin[0], r_0, True, 1)
+            f_out = self._light_S(origin[0], r_0, False)
+            fd_out = self._light_S(origin[0], r_0, False, 1)
+            if r_0 == self._r_S:  # on the horizon
+                XT = np.zeros((4, 2))
+                XT[0, :] = [origin[xdim], origin[0]]
+                XT[1, :] = [origin[xdim], t]
+                XT[2, :] = [0.0, t]
+                XT[3, :] = [0.0, origin[0]]
+            elif r_0 < self._r_S:  # inside the horizon
+                XT = np.zeros((2 * samplesize, 2))
+                if t > origin[0]:  # pointing inside
+                    X = np.linspace(r_0, 0.0, samplesize)
+                    XT[:samplesize, 0] = np.copysign(X, origin[xdim])
+                    XT[:samplesize, 1] = f_out(X)
+                    X = np.flip(X)
+                    XT[-samplesize:, 0] = np.copysign(X, origin[xdim])
+                    XT[-samplesize:, 1] = f_in(X)
+                else:  # pointing outside
+                    r_out = Newton(f_in, fd_in, r_0, t, xmin=self._r_S)
+                    X = np.linspace(r_out, r_0, samplesize)
+                    XT[:samplesize, 0] = np.copysign(X, origin[xdim])
+                    XT[:samplesize, 1] = f_in(X)
+                    r_in = Newton(f_out, fd_out, r_0, t,
+                                  xmin=0.0, xmax=self._r_S)
+                    X = np.linspace(r_0, r_in, samplesize)
+                    XT[-samplesize:, 0] = np.copysign(X, origin[xdim])
+                    XT[-samplesize:, 1] = f_out(X)
+            else:  # outside the horizon
+                XT = np.zeros((2 * samplesize, 2))
+                r_out = Newton(f_out, fd_out, r_0, t, xmin=self._r_S)
+                X = np.linspace(r_0, r_out, samplesize)
+                XT[:samplesize, 0] = np.copysign(X, origin[xdim])
+                XT[:samplesize, 1] = f_out(X)
+                r_in = Newton(f_in, fd_in, r_0, t, xmin=self._r_S)
+                X = np.linspace(r_in, r_0, samplesize)
+                XT[-samplesize:, 0] = np.copysign(X, origin[xdim])
+                XT[-samplesize:, 1] = f_in(X)
+                t_sing: float = f_in(0.0)
+                if (t_sing < t) and (origin[0] < t):
+                    r_in = Newton(f_in, fd_in, self._r_S / 2.0, t,
+                                  xmin=0.0, xmax=self._r_S)
+                    XT_inner: np.ndarray = np.zeros((samplesize + 1, 2))
+                    X = np.linspace(r_in, 0.0, samplesize)
+                    XT_inner[:samplesize, 0] = np.copysign(X, origin[xdim])
+                    XT_inner[:samplesize, 1] = f_in(X)
+                    XT_inner[-1, :] = [0.0, t]
+                    XT = np.concatenate((XT, [[np.nan, np.nan]], XT_inner))
+        else:  # Eddington-Finkelstein metric
+            r_in = origin[0] - t + r_0
+            n = 2 if r_in < 0.0 else 1
+            if r_0 == self._r_S:
+                XT = np.zeros((n + 2, 2))
+                XT[0, :] = [origin[xdim], origin[0]]
+                XT[1, :] = [origin[xdim], t]
+            else:
+                f_out = self._light_EF(origin[0], r_0, False)
+                fd_out = self._light_EF(origin[0], r_0, False, 1)
+                if r_0 < self._r_S:  # future -cone is limited
+                    t = min(t, f_out(0.0))
+                XT = np.zeros((samplesize + n, 2))
+                if r_0 < self._r_S:
+                    r_out = Newton(f_out, fd_out, r_0, t,
+                                   xmin=0.0, xmax=self._r_S)
+                else:
+                    r_out = Newton(f_out, fd_out, 1.5 * self._r_S, t,
+                                   xmin=self._r_S)
+                X = np.linspace(r_0, r_out, samplesize)
+                XT[:-n, 0] = np.copysign(X, origin[xdim])
+                XT[:-n, 1] = f_out(X)
+            if r_in < 0.0:
+                XT[-2, :] = [0.0, t]
+                XT[-1, :] = [0.0, origin[0] + r_0]
+            else:
+                XT[-1, :] = [np.copysign(1.0, origin[xdim]) * r_in, t]
+        return XT

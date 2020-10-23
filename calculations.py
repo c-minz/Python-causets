@@ -4,7 +4,7 @@ Created on 21 Aug 2020
 @author: Christoph Minz
 '''
 from __future__ import annotations
-from typing import List
+from typing import List, Any, Callable
 from math import log
 from fractions import Fraction
 import numpy as np
@@ -70,3 +70,32 @@ def HarmonicNumberFractions(n: int) -> List[Fraction]:
         H[k] = total
         total += Fraction(1, k + 1)
     return H
+
+
+def NewtonsMethod(f: Callable[[Any], Any],
+                  fprime: Callable[[Any], Any], x0: float,
+                  y: float = 0.0, xmin: float = np.NINF, xmax: float = np.PINF,
+                  default: float = 0.0, precission: float = 1.0e-6,
+                  maxIterations: int = 50) -> float:
+    '''
+    Uses Newton's method to find the x value at which the function `f` (with 
+    its derivative `fprime`) reaches the value y with a given `precission` and 
+    maximal number of iterations `maxIterations`. At each iteration, the 
+    result will be restricted to the interval 
+    [`xmin` + `precission`, `xmax` - `precission`]
+    If the method does not converge, `default` is returned.
+    '''
+    x_n: float = x0
+    for _ in range(maxIterations):
+        yprime_n: float = fprime(x_n)
+        if yprime_n == 0.0:
+            break
+        x_next: float = x_n - (f(x_n) - y) / yprime_n
+        if x_next < xmin:
+            x_next = xmin + precission
+        elif x_next > xmax:
+            x_next = xmax - precission
+        if abs(x_n - x_next) < precission:
+            return x_next
+        x_n = x_next
+    return default

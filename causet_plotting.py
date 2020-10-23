@@ -71,8 +71,8 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     >> Plot parameters for time slicing:
     'time': float, List[float]
     Either a single or two time parameters. The first time parameter is 
-    slices the past lightcones, the last time parameter slices the future 
-    lightcones.
+    slices the past cones, the last time parameter slices the future 
+    cones.
     Default: 0.0 (all cones are sliced at time 0.0)
 
     'timedepth': float
@@ -128,12 +128,12 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
      'horizontalalignment': 'right'}
 
 
-    >> Plot parameters for lightcones:
+    >> Plot parameters for causal cones:
     'pastcones': bool, Dict[str, Any]
     'futurecones': bool, Dict[str, Any]
-    Switch on the plotting of past or future lightcones with True (Default: 
-    False - lightcones are omitted). A non-empty dictionary with keyword 
-    parameters will also switch on the lightcones. The parameters have to be 
+    Switch on the plotting of past or future causal cones with True (Default: 
+    False - causal cones are omitted). A non-empty dictionary with keyword 
+    parameters will also switch on the causal cones. The parameters have to be 
     supported by matplotlib.patches.Patch (2D plots) or 
     by mpl_toolkits.mplot3d.art3d.Poly3DCollection (3D plots).
     Default 2D:
@@ -146,16 +146,16 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
      'alpha': 0.1}
 
     'conetimefade': str
-    Specifies the time fading type for the 'alpha' of the lightcones, which 
+    Specifies the time fading type for the 'alpha' of the causal cones, which 
     is independent of the dynamic plot mode. The 'alpha' value is used as 
     maximum.
     Additionally to the options of 'timefade', the empty string '' switches 
-    off the fading of lightcones.
+    off the fading of causal cones.
     Default: 'intensity'
 
     'conetimedepth': float
     Similar to the 'timedepth' parameter, this parameter determines the time 
-    depth, only now for plotting lightcones. Again, this parameter is 
+    depth, only now for plotting causal cones. Again, this parameter is 
     independent of the dynamic plot mode.
     Default: 0.0
     '''
@@ -260,7 +260,7 @@ def dynamic_parameter(function: str, dim: int, timedepth: float,
                       alpha_max: float) -> Callable[[float], float]:
     '''
     Returns a function handle to compute the `alpha` parameter for 
-    lightcones, and also in dynamic plot mode for links and event.
+    causal cones, and also in dynamic plot mode for links and event.
     '''
     _timefade: float
     if timedepth == 0.0:
@@ -345,7 +345,7 @@ def Plotter(eventList: List[CausetEvent], plotAxes: plta.Axes = None,
                         pcn_alpha_max = plotting['pastcones']['alpha']
                     except KeyError:
                         pcn_alpha_max = 1.0
-                plotpcone: Any = plot_spacetime.LightconePlotter(
+                plotpcone: Any = plot_spacetime.ConePlotter(
                     ax, _xy_z, plotting['pastcones'], -1, time[0],
                     dynamic_parameter(plotting['conetimefade'], dim,
                                       abs(plotting['conetimedepth']),
@@ -358,7 +358,7 @@ def Plotter(eventList: List[CausetEvent], plotAxes: plta.Axes = None,
                         fcn_alpha_max = plotting['pastcones']['alpha']
                     except KeyError:
                         fcn_alpha_max = 1.0
-                plotfcone: Any = plot_spacetime.LightconePlotter(
+                plotfcone: Any = plot_spacetime.ConePlotter(
                     ax, _xy_z, plotting['futurecones'], 1, time[-1],
                     dynamic_parameter(plotting['conetimefade'], dim,
                                       abs(plotting['conetimedepth']),
