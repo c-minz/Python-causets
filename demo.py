@@ -9,7 +9,7 @@ from sprinkledcauset import SprinkledCauset
 from spacetimes import deSitterSpacetime
 from shapes import CoordinateShape
 from matplotlib import pyplot as plt
-import causet_plotting as cplt
+import causetplotting as cplt
 
 # Create a sprinkle from de Sitter spacetime with cosmological horizon at
 # radius 1.0. Coordinates range over a hollow cylinder with height 3.0.
@@ -26,20 +26,19 @@ if len(dims) > 2:
     plt.figure(figsize=(8.0, 8.0))
 S.plot(dims)  # plot the embedding shape
 # Add causet plots and show result:
-C.plot(dims=dims,
-       events={'alpha': 0.05},
-       links={'alpha': 0.1, 'linewidth': 0.5}, labels=False)
-C.plot(eventList=list(e.Cone), dims=dims,
-       events={'markerfacecolor': 'cs:darkblue'},
-       links={'alpha': 0.6, 'linewidth': 1.5}, labels=False)
+cplt.plot(C, dims=dims,
+          events={'alpha': 0.05},
+          links={'alpha': 0.1, 'linewidth': 0.5}, labels=False)
+cplt.plot(list(e.Cone), dims=dims, spacetime=C.Spacetime,
+          events={'markerfacecolor': 'cs:darkblue'},
+          links={'alpha': 0.6, 'linewidth': 1.5}, labels=False)
 # end times for past and future light-cone:
 timeslices: Tuple[float, float] = S.Limits(0)
-C.plot(eventList=[e], dims=dims,
-       events={'markerfacecolor': 'cs:red'},
-       links=False, labels=False,
-       pastcones={'alpha': 1.0},
-       futurecones={'alpha': 1.0},
-       time=timeslices)
+cplt.plot(e, dims=dims, spacetime=C.Spacetime,
+          events={'markerfacecolor': 'cs:red'},
+          pastcones={'alpha': 1.0},
+          futurecones={'alpha': 1.0},
+          time=timeslices)
 ax: axes.Axes = plt.gca()
 ax.set_xlabel('space' if dims[0] > 0 else 'time')
 ax.set_ylabel('space' if dims[1] > 0 else 'time')

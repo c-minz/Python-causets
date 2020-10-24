@@ -7,10 +7,12 @@ Created on 22 Jul 2020
 from __future__ import annotations
 from typing import List, Dict, Any, Callable, Union
 from event import CausetEvent
+from embeddedcauset import EmbeddedCauset
 import numpy as np
 from matplotlib import pyplot as plt, axes as plta
-import color_schemes as colors
+import colorschemes as colors
 from spacetimes import Spacetime, FlatSpacetime
+from shapes import CoordinateShape
 
 default_colors: Dict[str, str] = {'links':       'cs:blue',
                                   'linksedge':   'cs:blue',
@@ -43,7 +45,7 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     Pre-sets the default plot parameters and overwrites them with any of 
     the user-defined values. For a full set of possible plot properties, 
     consult the matplotlib documentation for the respective plot objects.
-    The `color_schemes` module adds support for local color schemes of 
+    The `colorschemes` module adds support for local color schemes of 
     research institutes. To use colors of a scheme, precede the color by 
     'cs:', for example 'cs:blue' for the blue defined in the respective 
     color scheme.
@@ -57,8 +59,11 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
 
     'axislim': Dict[str, Tuple(float, float)]
     Axis limits of the plot ranges with the keys 'xlim', 'ylim' (and 'zlim').
-    Each entry is a tuple of the minimal and maximal value.
-    Default: -unset- (axis limits are not handled automatically)
+    Each entry is a tuple of the minimal and maximal value. Use 'shape' to 
+    automatically set the limits to the bounds of the shape specified by the 
+    keyword argument 'shape', which is automatically set to the embedding 
+    shape when plotting an `EmbeddedCauset` object.
+    Default: -unset- (axis limits are not set by the plotting function)
 
     'aspect': List[str]
     Aspect settings for a 2D plot. 
@@ -159,7 +164,6 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     independent of the dynamic plot mode.
     Default: 0.0
     '''
-
     p: Dict[str, Any] = {}
     # axis parameters:
     p['dims'] = kwargs.pop('dims', [1, 0])
@@ -168,6 +172,23 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
         p['axislim'] = kwargs.pop('axislim')
     except KeyError:
         pass
+    if (('axislim' not in p) or (p['axislim'] == 'shape')) \
+            and ('shape' in kwargs):
+        shape: CoordinateShape = kwargs['shape']
+        if len(p['dims']) > 2:
+            edgehalf: float = shape.MaxEdgeHalf(p['dims'])
+            center: np.ndarray = shape.Center
+            center0: float = center[p['dims'][0]]
+            center1: float = center[p['dims'][1]]
+            center2: float = center[p['dims'][2]]
+            p.update({'axislim': {
+                'xlim': (center0 - edgehalf, center0 + edgehalf),
+                'ylim': (center1 - edgehalf, center1 + edgehalf),
+                'zlim': (center2 - edgehalf, center2 + edgehalf)}})
+        else:
+            p.update({'axislim': {
+                'xlim': shape.Limits(p['dims'][0]),
+                'ylim': shape.Limits(p['dims'][1])}})
     p['aspect'] = kwargs.pop('aspect', ['equal', 'box'])
     # time slicing parameters:
     try:
@@ -289,28 +310,45 @@ def dynamic_parameter(function: str, dim: int, timedepth: float,
         return NotImplemented
 
 
-def Plotter(eventList: List[CausetEvent], plotAxes: plta.Axes = None,
-            coordattr: str = 'Coordinates', spacetime: Spacetime = None,
+def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
+            plotAxes: plta.Axes = None, spacetime: Spacetime = None,
             **kwargs) -> Callable[[float], Dict[str, Any]]:
     '''
-    Returns a Plotter function handle that requires the 'time' parameters, 
-    which has to be an list or np.ndarray of (one or two) float values.
-    Call the returned function to plots the event in eventList and their 
-    links (and further objects) to the Axes object ax. If ax is set to 
-    None (default) it plots in the current axes. The function returns a 
-    dictionary of plot object pointers. The keyword arguments are 
-    explained in the doc of plot_parameters.
+    Returns a function handle to a plotting function that accepts the single 
+    input `time`, which has to be a list or np.ndarray of one or two float 
+    values. Call the returned function to plot the events of `E` (and their 
+    links) the Axes object `plotAxes`. If `plotAxes` is set to None (default), 
+    then the plots appear in the current matplotlib axes. A call of the 
+    plotting function returns a dictionary of plot object pointers.
 
-    `eventList` is the list of event in the order they are plotted. 
-    `coordattr` has to be either 'Coordinates' or 'Position' to plot an 
-    embedded causet or a Hasse diagram, respectively.
+    Plotting parameters have to be specified as keyword arguments. 
+    See help of plot_parameters.
+
+    `E` is either a instance or a list of `CausetEvent` to be plotted in that 
+    order or an `EmbeddedCauset` object.  
+    `spacetime` is the spacetime for which the events and causal structure 
+    is plotted. This parameter is automatically set if E is an embedded causet.
+    If `None` (default), then the events are expected to have a `Position` 
+    attribute so that a Hasse diagram can be plotted. 
+    If a spacetime is specified (by E or explicitly), then the events are 
+    expected to have their `Coordinates` attribute set, for a plot of the 
+    embedding.
     '''
+    events: List[CausetEvent]
+    if isinstance(E, EmbeddedCauset):
+        events = list(E)
+        spacetime = E.Spacetime
+        kwargs.update({'shape': E.Shape})
+    elif isinstance(E, CausetEvent):
+        events = [E]
+    else:
+        events = E
+    eventCount = len(events)
     plotting: Dict[str, Any] = plot_parameters(**kwargs)
     is3d = plotting['3d']
     dim: int = 3 if is3d else 2
-    eventCount = len(eventList)
     if 'links' in plotting:
-        linkCount = CausetEvent.LinkCountOf(set(eventList))
+        linkCount = CausetEvent.LinkCountOf(set(events))
     _xy_z: List[int] = plotting['dims']
     _x: int = _xy_z[0]
     _y: int = _xy_z[1]
@@ -326,10 +364,17 @@ def Plotter(eventList: List[CausetEvent], plotAxes: plta.Axes = None,
     _h = {}
     isPlottingPastcones: bool = 'pastcones' in plotting
     isPlottingFuturecones: bool = 'futurecones' in plotting
-    plot_spacetime: Spacetime = spacetime if spacetime is not None \
-        else FlatSpacetime(max(_xy_z) + 1)
+    plot_spacetime: Spacetime
+    coordattr: str
+    if spacetime is None:
+        plot_spacetime = FlatSpacetime(max(_xy_z) + 1)
+        coordattr = 'Position'
+    else:
+        plot_spacetime = spacetime
+        coordattr = 'Coordinates'
 
-    def _timeslice(time: np.ndarray) -> Dict[str, Any]:
+    def _timeslice(time: Union[List[float], np.ndarray]) -> \
+            Dict[str, Any]:
         '''
         Core plot function that returns a dictionary of plot object 
         pointers.
@@ -363,7 +408,7 @@ def Plotter(eventList: List[CausetEvent], plotAxes: plta.Axes = None,
                     dynamic_parameter(plotting['conetimefade'], dim,
                                       abs(plotting['conetimedepth']),
                                       fcn_alpha_max))
-            for a in eventList:
+            for a in events:
                 c: np.ndarray = getattr(a, coordattr)
                 if isPlottingPastcones:
                     temp_cone = plotpcone(c)
@@ -407,13 +452,13 @@ def Plotter(eventList: List[CausetEvent], plotAxes: plta.Axes = None,
             except KeyError:
                 dyn_events = dynamic_parameter(plotting['timefade'],
                                                dim, t_depth, 1)
-            for i, a in enumerate(eventList):
+            for i, a in enumerate(events):
                 i_t_dist = getattr(a, coordattr)[0] - time[0]
                 i_fade = dyn_events(i_t_dist)
                 c_a = getattr(a, coordattr)
                 if plotting_links:
                     for j in range(i + 1, eventCount):
-                        b: CausetEvent = eventList[j]
+                        b: CausetEvent = events[j]
                         if not a.isLinkedTo(b):
                             continue
                         j_t_dist = getattr(b, coordattr)[0] - time[0]
@@ -440,9 +485,9 @@ def Plotter(eventList: List[CausetEvent], plotAxes: plta.Axes = None,
                         else:
                             continue
                         c_out: np.ndarray = \
-                            getattr(eventList[i_out], coordattr)
+                            getattr(events[i_out], coordattr)
                         linkTarget = (1 - tau) * \
-                            c_out + tau * getattr(eventList[i_in], coordattr)
+                            c_out + tau * getattr(events[i_in], coordattr)
                         linkWidth = dyn_links(i_out_t_dist)
                         if linkWidth > 0.0:
                             plotting_links.update({'alpha': linkWidth,
@@ -481,11 +526,11 @@ def Plotter(eventList: List[CausetEvent], plotAxes: plta.Axes = None,
         else:  # static plots only
             if 'links' in plotting:
                 _hlnk = [None] * linkCount
-                for i, a in enumerate(eventList):
+                for i, a in enumerate(events):
                     c_a = getattr(a, coordattr)
                     for j in range(i + 1, eventCount):
-                        c_b: np.ndarray = getattr(eventList[j], coordattr)
-                        if not a.isLinkedTo(eventList[j]):
+                        c_b: np.ndarray = getattr(events[j], coordattr)
+                        if not a.isLinkedTo(events[j]):
                             continue
                         l += 1
                         if is3d:
@@ -499,7 +544,7 @@ def Plotter(eventList: List[CausetEvent], plotAxes: plta.Axes = None,
                                                **plotting['links'])
             if 'events' in plotting:
                 _hvnt = [None] * eventCount
-                for i, a in enumerate(eventList):
+                for i, a in enumerate(events):
                     c_a = getattr(a, coordattr)
                     if is3d:
                         _hvnt[i] = ax.plot([c_a[_x]], [c_a[_y]],
@@ -510,7 +555,7 @@ def Plotter(eventList: List[CausetEvent], plotAxes: plta.Axes = None,
                                            **plotting['events'])
             if 'labels' in plotting:
                 _hlbl = [None] * eventCount
-                for i, a in enumerate(eventList):
+                for i, a in enumerate(events):
                     c_a = getattr(a, coordattr)
                     if is3d:
                         _hlbl[i] = ax.text(c_a[_x], c_a[_y], c_a[_z],
@@ -546,18 +591,14 @@ def Plotter(eventList: List[CausetEvent], plotAxes: plta.Axes = None,
     return _timeslice
 
 
-def plot(eventList: List[CausetEvent], ax: plta.Axes = None,
-         coordattr: str = 'Coordinates', spacetime: Spacetime = None,
+def plot(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
+         plotAxes: plta.Axes = None, spacetime: Spacetime = None,
          **kwargs) -> Dict[str, Any]:
     '''
-    Plots the event in eventList and their links to the Axes object ax 
-    (or current axes by default). It returns a dictionary of plot object 
-    pointers. The keyword arguments are explained in the doc of 
-    plot_parameters.
-
-    `eventList` is the list of event in the order they are plotted. 
-    `coordattr` has to be either 'Coordinates' or 'Position' to plot an 
-    embedded causet or a Hasse diagram, respectively.
+    Generates a plotting function with `Plotter` and passes the `time` keyword 
+    argument to the plotting function, the dictionary of plot handles is 
+    returned. If the keyword `time` (a list of one or two float) is not 
+    specified, then the default [0.0, 0.0] is used.
     '''
     time: np.ndarray = np.zeros(2)
     if 'time' in kwargs:
@@ -565,4 +606,26 @@ def plot(eventList: List[CausetEvent], ax: plta.Axes = None,
             time = kwargs['time']
         else:
             time = np.array([kwargs['time'], kwargs['time']])
-    return Plotter(eventList, ax, coordattr, spacetime, **kwargs)(time)
+    return Plotter(E, plotAxes, spacetime, **kwargs)(time)
+
+
+def plotDiagram(events: List[CausetEvent], permutation: List[int] = [],
+                plotAxes: plta.Axes = None,
+                **kwargs) -> Dict[str, Any]:
+    '''
+    Plots a Hasse diagram of `events` such that every event is placed at the 
+    point specified by its `Position` attribute. If `permutation` is specified 
+    as an integer list with the same length as `events`, then the `Position` 
+    attribute of the i-th element are set to the coordinates (i, permutation[i])
+    for all i. 
+    The plotting is executed by the `Plotter` routine.
+    '''
+    if len(permutation) == len(events):
+        C: np.ndarray = EmbeddedCauset._Permutation_Coords(permutation, 1.0)
+        for i, e in enumerate(events):
+            e.Position = C[i, :]
+    H: Dict[str, Any] = plot(events, plotAxes, **kwargs)
+    if plotAxes is None:
+        plotAxes = plt.gca()
+    plotAxes.set_axis_off()
+    return H

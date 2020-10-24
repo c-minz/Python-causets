@@ -9,9 +9,6 @@ from typing import Set, Iterable, List, Dict, Any, Tuple, Iterator, Union
 import numpy as np
 import itertools
 from event import CausetEvent
-import causet_plotting as cplt
-from matplotlib import pyplot as plt, axes as plta
-from builtins import int
 
 
 class Causet(object):
@@ -165,7 +162,7 @@ class Causet(object):
         layer is linked to a random number of (possibly zero) events in the 
         second layer. 
         '''
-        return NotImplemented
+        raise NotImplementedError()
 
     @staticmethod
     def FromPastMatrix(C: np.ndarray) -> 'Causet':
@@ -312,19 +309,20 @@ class Causet(object):
             return sum([len(e.LinkPast & eventSet) for e in eventSet])
 
     def PastMatrix(self,
-                   labelling: List[CausetEvent] = None) -> np.ndarray:
+                   labeledEvents: List[CausetEvent] = None,
+                   dtype: Any = bool) -> np.ndarray:
         '''
         Returns the logical causal past matrix such that `C[i, j]` is True 
         if the event with index j is in the past of event with index i. 
-        The event are indexed by `labelling` (by default sorted by 
+        The event are indexed by `labeledEvents` (by default sorted by 
         causality).
         '''
-        if labelling is None:
-            labelling = self.sortedByCausality()
-        l: int = len(labelling)
-        C: np.ndarray = np.zeros((l, l), dtype=bool)
-        for i, a in enumerate(labelling):
-            for j, b in enumerate(labelling):
+        if labeledEvents is None:
+            labeledEvents = self.sortedByCausality()
+        l: int = len(labeledEvents)
+        C: np.ndarray = np.zeros((l, l), dtype)
+        for i, a in enumerate(labeledEvents):
+            for j, b in enumerate(labeledEvents):
                 C[i, j] = a > b
         return C
 
@@ -337,11 +335,12 @@ class Causet(object):
         np.savetxt(filename, C, fmt='%.0f', delimiter=',')
 
     def FutureMatrix(self,
-                     labelling: List[CausetEvent] = None) -> np.ndarray:
+                     labeledEvents: List[CausetEvent] = None,
+                     dtype: Any = bool) -> np.ndarray:
         '''
         Returns the transpose of `PastMatrix`.
         '''
-        return self.PastMatrix(labelling).T
+        return self.PastMatrix(labeledEvents, dtype).T
 
     def LinkPastMatrix(self,
                        labelling: List[CausetEvent] = None) -> np.ndarray:
@@ -486,24 +485,6 @@ class Causet(object):
                 if len(e.Cone & events) != 1:
                     return False
         return True
-
-    @staticmethod
-    def _Permutation_Coords(P: List[int], radius: float) -> np.ndarray:
-        '''
-        Returns a matrix of (t, x) coordinates with `len(P)` rows, a 
-        pair of coordinates for each element in the permutation integer 
-        list (integers from 1 to `len(P)`).
-        '''
-        count: int = len(P)
-        coords: np.ndarray = np.empty((count, 2))
-        if count > 0:
-            cellscale: float = radius / float(count)
-            for i, p in enumerate(P):
-                crd_u: float = (p - 0.5) * cellscale
-                crd_v: float = (i + 0.5) * cellscale
-                coords[i, 0] = crd_u + crd_v - radius
-                coords[i, 1] = crd_u - crd_v
-        return coords
 
     @property
     def PastInf(self) -> Set[CausetEvent]:
@@ -1500,34 +1481,3 @@ class Causet(object):
                 else:
                     continue
         return (L, P)
-
-    def plotDiagram(self, eventSet: Set[CausetEvent] = None,
-                    ax: plta.Axes=None, **kwargs) -> Dict[str, Any]:
-        '''
-        Plots this instance as Hasse diagram and returns a dictionary of 
-        pointers to the plotted objects with entries for `event` and 
-        `links`.
-        The plot axes object `ax` defaults to `matplotlib.gca()`.
-        Further plot options are listed in 
-        `causet_plotting.plot_parameters`.
-        '''
-        if (not hasattr(self, '__diagram_coords')) or \
-                (self.__diagram_coords is None) or \
-                (eventSet is not None):
-            self.__diagram_events, P = self.permuted(eventSet)
-            print(P)
-            self.__diagram_coords: np.ndarray = Causet._Permutation_Coords(
-                P, 1.0)
-        plotReturn = cplt.plot(self.__diagram_events, ax, 'Position',
-                               **kwargs)
-        if ax is None:
-            ax = plt.gca()
-        ax.set_axis_off()
-        return plotReturn
-
-    def saveAsTikz(self, filename: str) -> None:
-        '''
-        Computes the Hasse diagram and generates a LaTeX TikZ file that 
-        creates a drawing.
-        '''
-        raise NotImplementedError()

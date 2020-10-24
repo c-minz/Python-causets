@@ -9,7 +9,7 @@ from typing import List, Dict, Any
 
 # This is the list of supported color schemes.
 # When adding a new entry, please specify a value for each color key that is
-# used by `causet_plotting`.
+# used by `causetplotting`.
 # It is recommended to define at least the color-keys as listed in the scheme
 # 'matplotlib' with the color 'core' as main brand core color and 'gray'
 # identical to 'grey'.

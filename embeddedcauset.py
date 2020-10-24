@@ -5,14 +5,12 @@ Created on 20 Jul 2020
 @author: Christoph Minz
 '''
 from __future__ import annotations
-from typing import Set, List, Iterable, Dict, Tuple, Callable, Any, Union
+from typing import Set, List, Iterable, Tuple, Callable, Union
 import numpy as np
 from event import CausetEvent
 from causet import Causet
 from shapes import CoordinateShape
 from spacetimes import Spacetime, FlatSpacetime
-import causet_plotting as cs_plt
-from matplotlib import axes as plta
 
 
 class EmbeddedCauset(Causet):
@@ -91,6 +89,24 @@ class EmbeddedCauset(Causet):
             self.create(coordinates)
 
     @staticmethod
+    def _Permutation_Coords(P: List[int], radius: float) -> np.ndarray:
+        '''
+        Returns a matrix of (t, x) coordinates with `len(P)` rows, a 
+        pair of coordinates for each element in the permutation integer 
+        list (integers from 1 to `len(P)`).
+        '''
+        count: int = len(P)
+        coords: np.ndarray = np.empty((count, 2))
+        if count > 0:
+            cellscale: float = radius / float(count)
+            for i, p in enumerate(P):
+                crd_u: float = (p - 0.5) * cellscale
+                crd_v: float = (i + 0.5) * cellscale
+                coords[i, 0] = crd_u + crd_v - radius
+                coords[i, 1] = crd_u - crd_v
+        return coords
+
+    @staticmethod
     def FromPermutation(P: List[int], labelFormat: str = None,
                         radius: float=1.0) -> 'EmbeddedCauset':
         '''
@@ -100,7 +116,7 @@ class EmbeddedCauset(Causet):
         '''
         C: EmbeddedCauset = EmbeddedCauset(
             shape=CoordinateShape(2, 'diamond', radius=radius))
-        C.create(Causet._Permutation_Coords(P, radius), labelFormat)
+        C.create(EmbeddedCauset._Permutation_Coords(P, radius), labelFormat)
         return C
 
     @property
@@ -109,6 +125,13 @@ class EmbeddedCauset(Causet):
         Returns the CoordinateShape object of the embedding region.
         '''
         return self._shape
+
+    @property
+    def Spacetime(self) -> Spacetime:
+        '''
+        Returns the Spacetime object of the embedding.
+        '''
+        return self._spacetime
 
     @property
     def Dim(self) -> int:
@@ -197,67 +220,3 @@ class EmbeddedCauset(Causet):
             sorted_idx = np.flip(sorted_idx)
         for i, idx in enumerate(sorted_idx):
             eventList[idx].Label = i + 1
-
-    def _init_plotting(self, plotArgs: Dict[str, Any],
-                       plotEvents: List[CausetEvent]=None) -> \
-            Tuple[List[CausetEvent], Dict[str, Any]]:
-        '''
-        Handles the plot keyword parameter 'axislim' == 'shape' (Default) 
-        and initialises the plotting coordinates.
-        '''
-        # handle keyword parameter axislim='shape' (default)
-        dims: List[int]
-        try:
-            dims = plotArgs['dims']
-        except KeyError:
-            plotArgs.update({'dims': [1, 0]})
-            dims = [1, 0]
-        if ('axislim' not in plotArgs) or (plotArgs['axislim'] == 'shape'):
-            if len(dims) > 2:
-                edgehalf: float = self.Shape.MaxEdgeHalf(dims)
-                center: np.ndarray = self.Shape.Center
-                center0: float = center[dims[0]]
-                center1: float = center[dims[1]]
-                center2: float = center[dims[2]]
-                plotArgs.update({'axislim': {
-                    'xlim': (center0 - edgehalf, center0 + edgehalf),
-                    'ylim': (center1 - edgehalf, center1 + edgehalf),
-                    'zlim': (center2 - edgehalf, center2 + edgehalf)}})
-            else:
-                plotArgs.update({'axislim': {
-                    'xlim': self.Shape.Limits(dims[0]),
-                    'ylim': self.Shape.Limits(dims[1])}})
-        # get event list and copy coordinates to memory:
-        if plotEvents is None:
-            plotEvents = list(self._events)
-        return (plotEvents, plotArgs)
-
-    def TimeslicePlotter(self, ax: plta.Axes = None,
-                         eventList: List[CausetEvent] = None,
-                         **kwargs) -> Callable[[np.ndarray], Dict[str, Any]]:
-        '''
-        Returns the core plotter function handle that requires an array of 
-        one or two time values (as past and future time). The plotter function 
-        creates a plot of this instance (or the list of event if eventList 
-        is not None) into the Axes ax with plot parameters given by keyword 
-        arguments. To fit the axis limits to the embedding shape, use the 
-        keyword argument 'axislim' == 'shape' (Default).
-        For all other plot options, see doc of 
-        causet_plotting.plot_parameters.
-        '''
-        pEvents, pArgs = self._init_plotting(kwargs, eventList)
-        return cs_plt.Plotter(pEvents, ax, spacetime=self._spacetime, **pArgs)
-
-    def plot(self, ax: plta.Axes = None,
-             eventList: List[CausetEvent] = None,
-             **kwargs) -> Dict[str, Any]:
-        '''
-        Creates a plot of this instance (or the list of event if eventList 
-        is not None) into the Axes ax with plot parameters given by keyword 
-        arguments. To fit the axis limits to the embedding shape, use the 
-        keyword argument 'axislim' == 'shape' (Default).
-        For all other plot options, see doc of 
-        causet_plotting.plot_parameters.
-        '''
-        pEvents, pArgs = self._init_plotting(kwargs, eventList)
-        return cs_plt.plot(pEvents, ax, spacetime=self._spacetime, **pArgs)
