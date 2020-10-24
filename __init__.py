@@ -11,5 +11,5 @@ from spacetimes import *
 from embeddedcauset import *
 from sprinkledcauset import *
 # Plot modules:
-from color_schemes import *
-from causet_plotting import *
+from colorschemes import *
+from causetplotting import *

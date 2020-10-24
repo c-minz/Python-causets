@@ -32,7 +32,7 @@ class Causet(object):
                 break
         self._events: Set[CausetEvent] = eventSet
 
-    def __iter__(self) -> Iterable:
+    def __iter__(self) -> Iterator[CausetEvent]:
         return iter(self._events)
 
     def __repr__(self) -> str:
