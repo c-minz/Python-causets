@@ -5,6 +5,7 @@ Created on 20 Jul 2020
 @author: Christoph Minz
 '''
 from __future__ import annotations
+from typing import Iterable
 import unittest
 from event import CausetEvent
 from causet import Causet
@@ -13,6 +14,22 @@ import os
 
 
 class CausetTestCase(unittest.TestCase):
+
+    @staticmethod
+    def _print_eventlist(el: Iterable[CausetEvent]) -> None:
+        '''
+        Private, debug method: Print an iterable of CausetEvent as a 
+        short line console output.
+        '''
+        print(', '.join(str(e) for e in el))
+
+    @staticmethod
+    def _print_eventlists(ell: Iterable[Iterable[CausetEvent]]) -> None:
+        '''
+        Private, debug method: Print an iterable of an iterable of 
+        CausetEvent as a short line console output.
+        '''
+        print('| '.join(', '.join(str(e) for e in el) for el in ell))
 
     def assertCauset(self, S: Causet, size: int,
                      is_chain: bool, is_antichain: bool):
