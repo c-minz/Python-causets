@@ -3,12 +3,13 @@
 Created on 20 Jul 2020
 
 @author: Christoph Minz
+@license: BSD 3-Clause
 '''
 from __future__ import annotations
 from typing import Iterable
 import unittest
-from event import CausetEvent
-from causet import Causet
+from causets.causetevent import CausetEvent
+from causets.causet import Causet
 import numpy as np
 import os
 
@@ -18,7 +19,7 @@ class CausetTestCase(unittest.TestCase):
     @staticmethod
     def _print_eventlist(el: Iterable[CausetEvent]) -> None:
         '''
-        Private, debug method: Print an iterable of CausetEvent as a 
+        Private, debug method: Print an `Iterable` of `CausetEvent` as a 
         short line console output.
         '''
         print(', '.join(str(e) for e in el))
@@ -26,8 +27,8 @@ class CausetTestCase(unittest.TestCase):
     @staticmethod
     def _print_eventlists(ell: Iterable[Iterable[CausetEvent]]) -> None:
         '''
-        Private, debug method: Print an iterable of an iterable of 
-        CausetEvent as a short line console output.
+        Private, debug method: Print an `Iterable` of an `Iterable` of 
+        `CausetEvent` as a short line console output.
         '''
         print('| '.join(', '.join(str(e) for e in el) for el in ell))
 

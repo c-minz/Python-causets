@@ -3,14 +3,15 @@
 Created on 02 Oct 2020
 
 @author: Christoph Minz
+@license: BSD 3-Clause
 '''
 from __future__ import annotations
 from typing import Callable, Tuple, List, Dict, Any, Union
 import numpy as np
 import math
 from matplotlib import patches, axes
-from shapes import BallSurface, OpenConeSurface, CoordinateShape, CircleEdge
-from calculations import NewtonsMethod as Newton
+from causets.shapes import BallSurface, OpenConeSurface, CoordinateShape, CircleEdge
+from causets.calculations import NewtonsMethod as Newton
 
 
 class Spacetime(object):

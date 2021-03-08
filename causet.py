@@ -3,27 +3,26 @@
 Created on 20 Jul 2020
 
 @author: Christoph Minz
+@license: BSD 3-Clause
 '''
 from __future__ import annotations
 from typing import Set, Iterable, List, Any, Tuple, Iterator, Union
 import numpy as np
 import itertools
-from event import CausetEvent
+from causets.causetevent import CausetEvent
 
 
 class Causet(object):
     '''
-    Causal set class to handle operations of a set of event (instances of 
-    CausetEvent).
+    Causal set class to handle operations of a set of `CausetEvent`.
     '''
 
     _events: Set[CausetEvent]
 
     def __init__(self, eventSet: Set[CausetEvent]) -> None:
         '''
-        Generates a Causet class instance from a set of event (instances of 
-        CausetEvent).
-        The event instances are not checked for logical consistency.
+        Generates a Causet class instance from a set of `CausetEvent`.
+        The `CausetEvent` instances are not checked for logical consistency.
         '''
         while True:
             l: int = len(eventSet)
@@ -46,8 +45,9 @@ class Causet(object):
         in an Alexandrov subset of 2D Minkowski spacetime.
 
         If the optional argument `labelFormat = None` (default) the integer 
-        values are used to label the event. Use an empty string '' not to 
-        label any event, or a format string, for example 'my label {.2f}'.
+        values are used to label the `CausetEvent`. Use an empty string '' 
+        not to label any `CausetEvent`, or a format string, for example 
+        'my label {.2f}'.
         '''
         eventList: List[CausetEvent] = [CausetEvent()] * len(P)
         eLabel: Any
@@ -66,7 +66,8 @@ class Causet(object):
     @staticmethod
     def NewChain(n: int, labelFormat: str = None) -> 'Causet':
         '''
-        Generates a causal set of `n` event in a causal chain.
+        Generates a causal set of `n` instances of `CausetEvent` in a 
+        causal chain.
 
         For the optional argument `labelFormat`, see `FromPermutation`.
         '''
@@ -75,7 +76,7 @@ class Causet(object):
     @staticmethod
     def NewAntichain(n: int, labelFormat: str = None) -> 'Causet':
         '''
-        Generates a causal set with `n` spacelike separated event.
+        Generates a causal set with `n` spacelike separated `CausetEvent`.
 
         For the optional argument `labelFormat`, see `FromPermutation`.
         '''
@@ -114,7 +115,7 @@ class Causet(object):
                  closed: bool = True) -> 'Causet':
         '''
         Generates a fence causal set of `length` (with 
-        `(height + 1) * length` many event). If `closed` (default), the 
+        `(height + 1) * length` many `CausetEvent`). If `closed` (default), the 
         fence needs flat spacetime of dimension 1 + 2 to be embedded, 
         otherwise it can also be embedded in flat spacetime of dimension 
         1 + 1.
@@ -240,8 +241,8 @@ class Causet(object):
 
     def add(self, eventSet: Iterable, unlink: bool = False) -> None:
         '''
-        Adds all the event of the (causal) set `eventSet` 
-        (Causet or Set[CausetEvent]) to this instance. 
+        Adds all the events of the (causal) set `eventSet` 
+        (`Causet` or `Set[CausetEvent]`) to this instance. 
         '''
         self._events.update(eventSet)
         if unlink:
@@ -252,8 +253,8 @@ class Causet(object):
 
     def discard(self, eventSet: Iterable, unlink: bool = False) -> None:
         '''
-        Discards all the event of the (causal) set `eventSet` 
-        (Causet or Set[CausetEvent]) from this instance. 
+        Discards all the events of the (causal) set `eventSet` 
+        (`Causet` or `Set[CausetEvent]`) from this instance. 
         '''
         self._events.difference_update(eventSet)
         if unlink:
@@ -265,7 +266,7 @@ class Causet(object):
     @staticmethod
     def len(other: 'Causet') -> int:
         '''
-        Returns the number of event (set cardinality) of some Causet 
+        Returns the number of events (set cardinality) of some Causet 
         instance.
         '''
         return len(other._events)
@@ -273,13 +274,13 @@ class Causet(object):
     @property
     def Card(self) -> int:
         '''
-        Returns the number of event (set cardinality) in this instance.
+        Returns the number of events (set cardinality) in this instance.
         '''
         return len(self._events)
 
     def link(self) -> None:
         '''
-        Computes the causal links between all event.
+        Computes the causal links between all events.
         '''
         # clear links:
         for e in self._events:
@@ -292,7 +293,7 @@ class Causet(object):
 
     def unlink(self) -> None:
         '''
-        Force all CausetEvent instances to reset their link memory.
+        Force all `CausetEvent` instances to reset their link memory.
         '''
         for e in self._events:
             if e.hasBeenLinked():
@@ -300,7 +301,7 @@ class Causet(object):
 
     def LinkCount(self, eventSet: Set[CausetEvent] = None) -> int:
         '''
-        Returns the number of links between all event in `eventSet` 
+        Returns the number of links between all events in `eventSet` 
         (or in this instance if `eventSet is None`).
         '''
         if eventSet is None:
@@ -314,7 +315,7 @@ class Causet(object):
         '''
         Returns the logical causal past matrix such that `C[i, j]` is True 
         if the event with index j is in the past of event with index i. 
-        The event are indexed by `labeledEvents` (by default sorted by 
+        The events are indexed by `labeledEvents` (by default sorted by 
         causality).
         '''
         if labeledEvents is None:
@@ -347,7 +348,7 @@ class Causet(object):
         '''
         Returns the logical link past matrix such that `C[i, j]` is True if 
         the event with index j is linked in the past to event with index i. 
-        The event are indexed with `labelling` (by default sorted by 
+        The events are indexed with `labelling` (by default sorted by 
         causality).
         '''
         if labelling is None:
@@ -369,7 +370,7 @@ class Causet(object):
     def find(self, label: Any) -> CausetEvent:
         '''
         Returns the first event with the given `label`. If no event 
-        can be found, it raises a ValueError.
+        can be found, it raises a `ValueError`.
         '''
         for e in self._events:
             if e.Label == label:
@@ -378,7 +379,7 @@ class Causet(object):
 
     def findAll(self, *labels: Iterable[Any]) -> Set[CausetEvent]:
         '''
-        Returns a set of event with any of the given `labels`.
+        Returns a set of events with any of the given `labels`.
         '''
         return {e for e in self._events if e.Label in labels}
 
@@ -431,7 +432,7 @@ class Causet(object):
 
     def isChain(self, events: Iterable[CausetEvent] = None) -> bool:
         '''
-        Tests if this instance or `event` is a causal chain.
+        Tests if this instance or `CausetEvent` is a causal chain.
         '''
         c: int
         if events is None:
@@ -449,7 +450,7 @@ class Causet(object):
 
     def isPath(self, events: Iterable[CausetEvent] = None) -> bool:
         '''
-        Tests if this instance or `event` is a causal path.
+        Tests if this instance or `CausetEvent` is a causal path.
         '''
         if events is None:
             if self.Card == 0:
@@ -473,7 +474,7 @@ class Causet(object):
 
     def isAntichain(self, events: Iterable[CausetEvent] = None) -> bool:
         '''
-        Tests if this instance or `event` is a causal anti-chain.
+        Tests if this instance of `CausetEvent` is a causal anti-chain.
         '''
         if events is None:
             for e in self._events:
@@ -489,14 +490,14 @@ class Causet(object):
     @property
     def PastInf(self) -> Set[CausetEvent]:
         '''
-        Returns the set of event without any past event (past infinity).
+        Returns the set of events without any past event (past infinity).
         '''
         return {e for e in self._events if e.PastCard == 0}
 
     @property
     def FutureInf(self) -> Set[CausetEvent]:
         '''
-        Returns the set of event without any future event (future 
+        Returns the set of events without any future event (future 
         infinity).
         '''
         return {e for e in self._events if e.FutureCard == 0}
@@ -504,7 +505,7 @@ class Causet(object):
     @property
     def PastInfCard(self) -> int:
         '''
-        Returns the number of event without any past event (past infinity).
+        Returns the number of events without any past event (past infinity).
         '''
         return sum(1 for e in self._events if e.PastCard == 0)
 
@@ -553,7 +554,7 @@ class Causet(object):
                includePresent: bool = False,
                intersect: bool = False) -> Set[CausetEvent]:
         '''
-        Returns the set of event that are in the past of `eventSet`.
+        Returns the set of events that are in the past of `eventSet`.
         '''
         newEventSet: Set[CausetEvent] = set()
         if includePresent and intersect:
@@ -574,7 +575,7 @@ class Causet(object):
                  includePresent: bool = False,
                  intersect: bool = False) -> Set[CausetEvent]:
         '''
-        Returns the set of event that are in the future of `eventSet`.
+        Returns the set of events that are in the future of `eventSet`.
         '''
         newEventSet: Set[CausetEvent] = set()
         if includePresent and intersect:
@@ -595,7 +596,7 @@ class Causet(object):
                includePresent: bool = True,
                intersect: bool = False) -> Set[CausetEvent]:
         '''
-        Returns the set of event that are in the cone of `eventSet`.
+        Returns the set of events that are in the cone of `eventSet`.
         '''
         newEventSet: Set[CausetEvent] = set()
         if includePresent and intersect:
@@ -613,7 +614,7 @@ class Causet(object):
 
     def SpacelikeTo(self, eventSet: Set[CausetEvent]) -> Set[CausetEvent]:
         '''
-        Returns the set of event that are spacelike separated to 
+        Returns the set of events that are spacelike separated to 
         `eventSet`.
         '''
         return self._events - self.ConeOf(eventSet, includePresent=True)
@@ -622,9 +623,9 @@ class Causet(object):
     def Interval(a: CausetEvent, b: CausetEvent,
                  includeBoundary: bool = True) -> Set[CausetEvent]:
         '''
-        Returns the causal interval (Alexandrov set) between event a and b 
+        Returns the causal interval (Alexandrov set) between events `a` and `b` 
         or an empty set if not `a <= b`.
-        If `includeBoundary == True` (default), the event a and b are 
+        If `includeBoundary == True` (default), the events `a` and `b` are 
         included in the interval.
         '''
         if not a <= b:
@@ -641,8 +642,8 @@ class Causet(object):
                      includeBoundary: bool = True) -> int:
         '''
         Returns the cardinality of the causal interval (Alexandrov set) 
-        between event a and b or 0 if not `a <= b`.
-        If `includeBoundary == True` (default), the event a and b are 
+        between events `a` and `b` or 0 if not `a <= b`.
+        If `includeBoundary == True` (default), the events `a` and `b` are 
         included in the interval.
         '''
         if not a <= b:
@@ -655,9 +656,9 @@ class Causet(object):
     @staticmethod
     def PerimetralEvents(a: CausetEvent, b: CausetEvent) -> Set[CausetEvent]:
         '''
-        Returns the event that are linked between event a and b, with a in 
-        the past and b in the future, or an empty set if there are no such 
-        event.
+        Returns the events that are linked between event `a` and `b`, with 
+        `a` in the past and `b` in the future, or an empty set if there are 
+        no such event.
         '''
         if not (a < b):
             return set()
@@ -667,8 +668,8 @@ class Causet(object):
     @staticmethod
     def PerimetralEventCount(a: CausetEvent, b: CausetEvent) -> int:
         '''
-        Returns the number of event that are linked between event a and b, 
-        with a in the past and b in the future.
+        Returns the number of events that are linked between event `a` and 
+        `b`, with `a` in the past and `b` in the future.
         '''
         if not (a < b):
             return 0
@@ -678,8 +679,8 @@ class Causet(object):
     @staticmethod
     def InternalEvents(a: CausetEvent, b: CausetEvent) -> Set[CausetEvent]:
         '''
-        Returns the event that are not in a rank 2 path from event a to 
-        event b, or an empty set if there are no such event.
+        Returns the events that are not in `a` rank 2 path from event 
+        `a` to event `b`, or an empty set if there are no such event.
         '''
         if not (a < b):
             return set()
@@ -690,8 +691,8 @@ class Causet(object):
     @staticmethod
     def InternalEventCount(a: CausetEvent, b: CausetEvent) -> int:
         '''
-        Returns the number of event that are not in a rank 2 path from 
-        event a to event b.
+        Returns the number of events that are not in a rank 2 path from 
+        event `a` to event `b`.
         '''
         if not (a < b):
             return 0
@@ -701,9 +702,9 @@ class Causet(object):
 
     def CentralAntichain(self, e: CausetEvent = None) -> Set[CausetEvent]:
         '''
-        Returns the set of event that forms a maximal antichain with event 
-        that have a similar past and future cardinality (like event e if 
-        specified).
+        Returns the set of events that forms `a` maximal antichain with 
+        event that have a similar past and future cardinality (like 
+        event `e` if specified).
         '''
         # Compute the absolute sizes of past minus future cones:
         diff: int
@@ -766,7 +767,7 @@ class Causet(object):
     def LayerNumbers(eventList: List[CausetEvent],
                      reverse: bool = False) -> List[int]:
         '''
-        Returns a list of layer numbers for the list of event `eventList`. 
+        Returns a list of layer numbers for the list of events `eventList`. 
         If not `reverse` (default), the layer numbers are non-negative and 
         increasing from the past infinity of `eventList`. If reverse, the 
         layer numbers are non-positive and decreasing from the future 
@@ -831,7 +832,7 @@ class Causet(object):
     def RankNumbers(eventList: List[CausetEvent],
                     reverse: bool = False) -> List[int]:
         '''
-        Returns a list of rank numbers for the list of event `eventList`. 
+        Returns a list of rank numbers for the list of events `eventList`. 
         If not `reverse` (default), the rank numbers are non-negative and 
         increasing from the past infinity of `eventList`. If reverse, the 
         rank numbers are non-positive and decreasing from the future 
@@ -858,9 +859,9 @@ class Causet(object):
               length: Union[str, int, List[int]] = 'any') -> \
             Iterator[List[CausetEvent]]:
         '''
-        Iterates over all paths (list of CausetEvent) from event a to 
-        event b that have a specific `length`. As optional argument, the 
-        `length` can be specified with the following meanings:
+        Iterates over all paths (list of CausetEvent) from events `a` 
+        to event `b` that have a specific `length`. As optional argument, 
+        the `length` can be specified with the following meanings:
         'any': paths of any `length` (default)
         'min': paths of minimal `length`
         'max' or 'timegeo': paths of maximal `length` (timelike geodesics)
@@ -942,19 +943,21 @@ class Causet(object):
                              searching: Set[CausetEvent] = None,
                              intersecting: Set[CausetEvent] = None) -> int:
         '''
-        For `a <= b`, it returns the cardinality of the interval from a to b. 
+        For `a <= b`, it returns the cardinality of the interval from 
+        `a` to `b`. 
 
-        For `a > b`, it returns the cardinality of the interval from b to a. 
+        For `a > b`, it returns the cardinality of the interval from 
+        `b` to `a`. 
 
-        When a is spacelike to b, it returns the smallest cardinality among 
-        the intervals from one event in the past of a and b to one event in 
-        the future of a and b.
+        When `a` is spacelike to `b`, it returns the smallest cardinality 
+        among the intervals from one event in the past of `a` and `b` to 
+        one event in the future of `a` and `b`.
 
-        The optional argument 'searching' provides the set of event of start 
-        and end points of any causal interval.
-        The optional argument 'intersecting' provides the set of event that 
-        is intersected with the interval before the cardinality is computed.
-        Default for both is the entire causet.
+        The optional argument 'searching' provides the set of events of 
+        start and end points of any causal interval.
+        The optional argument 'intersecting' provides the set of events 
+        that is intersected with the interval before the cardinality is 
+        computed. Default for both is the entire causet.
 
         If either no common past event or no common future event is in the 
         'searching' set (or the entire causet), the entire past or future is 
@@ -1004,15 +1007,16 @@ class Causet(object):
                        recursive: bool = True) -> np.ndarray:
         '''
         Computes a symmetric matrix (ndarray of int) from counting the 
-        distances between every pair of event from the `antichain`. The 
+        distances between every pair of events from the `antichain`. The 
         rows and columns are labelled by the index of the list `antichain`.
 
         As optional argument `counting` specifies the method 
         how the distances are computed:
         'ziczac' (default) uses the number of alternating along a past and 
         a future link - one ziczac counts as 1.
-        'intersection' uses the number of all event along `antichain` that 
-        intersect the smallest intervals (see also 'SmallestIntervalCard').
+        'intersection' uses the number of all events along `antichain` 
+        that intersect the smallest intervals (see also 
+        `SmallestIntervalCard`).
 
         The optional argument `recursive` specifies if the distances are 
         recursively added (default) or the distance computation breaks 
@@ -1064,9 +1068,9 @@ class Causet(object):
                   distances: np.ndarray = None) -> \
             Iterator[List[CausetEvent]]:
         '''
-        Iterates over all shortest spacelike paths (list of CausetEvent) 
-        from event a to event b that are part of the (maximal) antichain 
-        `along`. 
+        Iterates over all shortest spacelike paths (list of `CausetEvent`) 
+        from event `a` to event `b` that are part of the (maximal) 
+        antichain `along`. 
         As optional argument, the distances matrix can be specified if it 
         has already been computed.
         '''
@@ -1101,9 +1105,9 @@ class Causet(object):
             List[Set[CausetEvent]]:
         '''
         Converts `eventSet` (or the entire causet if `eventSet is None`) 
-        to a list of subsets such that each subset contains event that are 
-        spacelike separated to all event from any other subset in the list, 
-        but all event of any subset are linked to all other event in this 
+        to a list of subsets such that each subset contains events that are 
+        spacelike separated to all events from any other subset in the list, 
+        but all events of any subset are linked to all other events in this 
         subset. It is a list of the disjoint subsets of `eventSet` or the 
         Causet object.
         '''

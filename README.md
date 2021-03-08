@@ -11,15 +11,27 @@ The class `EmbeddedCauset` extends `Causet` and is able to handle the coordinate
 Most of the implemented code has been tested with the `unittest` module. The test modules are named as `test_...` and also show some principle examples. 
 
 A demonstration is provided as `demo.py` that generates a sprinkle in 3-dimensional de Sitter space. An example plot is given here (see `demo.png`).
-![Example Plot for a Sprinkle in de Sitter Space](https://github.com/c-minz/causets/blob/master/demo.png)
+![Example Plot for a Sprinkle in de Sitter Space](demo.png)
 
 # Past Development
-The original code was developed in MATLAB R2019a and R2020a as part of my PhD projects at the University of York (from 2017 to 2021). In order to make the code usable without a MATLAB license, I started to convert it to Python 3.8.3 with mypy typing support.
+The original code was developed in MATLAB R2019a and R2020a as part of my PhD projects at the University of York (from 2017 to 2021). Most parts of the MATLAB source code are in separate repositories:
+* [Local structure of sprinkled causal sets, part 1/2 - 'diamondsprinkling'](https://github.com/c-minz/diamondsprinkling)
+* [Local structure of sprinkled causal sets, part 2/2 - 'diamondresults'](https://github.com/c-minz/diamondresults)
+* [MATLAB object classes and other - 'MATLAB-causets'](https://github.com/c-minz/MATLAB-causets)
 
-The Python classes and functions are documented so that the help commands within Python give further information. 
-For distributional purposes, see LICENSE.md
+In order to make the code usable without a MATLAB license, I started to convert it to Python source code (Python 3.8.3) with mypy typing support.
+
+The Python classes and functions are documented so that the help commands within Python give further information.
 
 # Future Development
-Further development ideas include: 
+My development ideas include: 
 1. Visualization of generic causets as (Hasse) diagrams
-2. Methods for spacetime reconstruction
+2. Methods for spacetime triangulation
+
+If you wish to contribute to the project, please get in contact via email:
+christoph(dot)minz[at]gmail(dot)com
+
+# License Information
+The source code is published under the BSD 3-Clause License, see [license file](LICENSE.md).
+
+Copyright (c) 2020-2021, Christoph Minz

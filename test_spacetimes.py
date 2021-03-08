@@ -3,11 +3,12 @@
 Created on 05 Oct 2020
 
 @author: Christoph Minz
+@license: BSD 3-Clause
 '''
 from __future__ import annotations
 import unittest
 import numpy as np
-from spacetimes import Spacetime, deSitterSpacetime
+from causets.spacetimes import Spacetime, deSitterSpacetime
 from matplotlib import pyplot as plt
 
 

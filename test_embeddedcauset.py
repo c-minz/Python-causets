@@ -3,11 +3,12 @@
 Created on 20 Jul 2020
 
 @author: Christoph Minz
+@license: BSD 3-Clause
 '''
 from __future__ import annotations
 import unittest
-from embeddedcauset import CoordinateShape, EmbeddedCauset
-from test_causet import CausetTestCase
+from causets.embeddedcauset import CoordinateShape, EmbeddedCauset
+from causets.test_causet import CausetTestCase
 
 
 class TestEmbeddedCauset(CausetTestCase):

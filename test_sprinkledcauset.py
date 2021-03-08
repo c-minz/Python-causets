@@ -3,11 +3,12 @@
 Created on 22 Jul 2020
 
 @author: Christoph Minz
+@license: BSD 3-Clause
 '''
 from __future__ import annotations
 import unittest
-from sprinkledcauset import SprinkledCauset
-from test_causet import CausetTestCase
+from causets.sprinkledcauset import SprinkledCauset
+from causets.test_causet import CausetTestCase
 
 
 class TestSprinkledCauset(CausetTestCase):

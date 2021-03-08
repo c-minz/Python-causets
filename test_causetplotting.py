@@ -3,15 +3,16 @@
 Created on 24 Oct 2020
 
 @author: Christoph Minz
+@license: BSD 3-Clause
 '''
 from __future__ import annotations
 import unittest
-from embeddedcauset import EmbeddedCauset
-from sprinkledcauset import SprinkledCauset
-from spacetimes import BlackHoleSpacetime
-from shapes import CoordinateShape
+from causets.embeddedcauset import EmbeddedCauset
+from causets.sprinkledcauset import SprinkledCauset
+from causets.spacetimes import BlackHoleSpacetime
+from causets.shapes import CoordinateShape
 from matplotlib import pyplot as plt
-import causetplotting as cplt
+import causets.causetplotting as cplt
 
 
 class TestCausetplotting(unittest.TestCase):

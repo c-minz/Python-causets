@@ -3,12 +3,13 @@
 Created on 25 Oct 2020
 
 @author: Christoph Minz
+@license: BSD 3-Clause
 '''
 from __future__ import annotations
 from typing import Set, List, Tuple, Iterator, Dict
 import numpy as np
-from event import CausetEvent
-from causet import Causet
+from causets.causetevent import CausetEvent
+from causets.causet import Causet
 
 
 def AntichainPermutations(C: Causet, antichain: Set[CausetEvent],
@@ -177,7 +178,7 @@ def permuted(C: Causet, eventSet: Set[CausetEvent] = None,
     such that the permutation determines a causet that is a 2D projected 
     version of this instance. This function provides can be used to 
     obtain a `flattened` causet to draw a Hasse diagram.
-    If eventSet = None (default), all causet event are included.
+    If eventSet = None (default), all causet events are included.
 
     The optional parameter `maxIterations` sets the limit of iterations 
     in the optimisation. If this value is reaches without finding any 
@@ -187,7 +188,7 @@ def permuted(C: Causet, eventSet: Set[CausetEvent] = None,
         eventSet = C._events
     eventSet_len = len(eventSet)
     # Reserve buffer for result:
-    L: List[CausetEvent] = []   # permutation of event
+    L: List[CausetEvent] = []   # permutation of events
     P: List[int] = []           # integers to generate coordinates
     extension_degree: int = -1  # number of extended causal relations
     iteration: int = 0
@@ -203,8 +204,8 @@ def permuted(C: Causet, eventSet: Set[CausetEvent] = None,
         P_this = [0] * eventSet_len
         i_first: int
         i_last: int
-        # Extend the future of each event by those event in future
-        # layers that are between two other future event in the layers:
+        # Extend the future of each event by those events in future
+        # layers that are between two other future events in the layers:
         layers_len = len(layers)
         ext_futures: Dict[CausetEvent, Set[CausetEvent]] = {}
         for l in range(layers_len - 1, -1, -1):
@@ -225,8 +226,8 @@ def permuted(C: Causet, eventSet: Set[CausetEvent] = None,
                             ext_future.add(b)
                             ext_future.update(ext_futures[b])
                 ext_futures[a] = ext_future
-        # Extend the past of each event by those event in past
-        # layers that are between two other past event in the layers:
+        # Extend the past of each event by those events in past
+        # layers that are between two other past events in the layers:
         ext_pasts: Dict[CausetEvent, Set[CausetEvent]] = {}
         try:
             for l, layer in enumerate(layers):
@@ -254,7 +255,7 @@ def permuted(C: Causet, eventSet: Set[CausetEvent] = None,
                                 right.update(ext_futures[a])
                     ext_pasts[b] = ext_past
                 # Find u and v coordinates with the cardinalities of
-                # the event in the past, right and left regions:
+                # the events in the past, right and left regions:
                 for e in layer:
                     ext_cone: Set[CausetEvent] = \
                         ext_pasts[e] | ext_futures[e]

@@ -3,14 +3,15 @@
 Created on 20 Jul 2020
 
 @author: Christoph Minz
+@license: BSD 3-Clause
 '''
 from __future__ import annotations
 from typing import Set, List, Iterable, Tuple, Callable, Union
 import numpy as np
-from event import CausetEvent
-from causet import Causet
-from shapes import CoordinateShape
-from spacetimes import Spacetime, FlatSpacetime
+from causets.causetevent import CausetEvent
+from causets.causet import Causet
+from causets.shapes import CoordinateShape
+from causets.spacetimes import Spacetime, FlatSpacetime
 
 
 class EmbeddedCauset(Causet):
@@ -81,7 +82,7 @@ class EmbeddedCauset(Causet):
         self._shape = shape
         # create new events:
         if coordinates is not None:
-            # add labelled event with coordinates:
+            # add labelled events with coordinates:
             if isinstance(coordinates, np.ndarray) and \
                     ((coordinates.ndim != 2) or (coordinates.shape[1] != dim)):
                 raise ValueError('The dimension of the specified coordinates ' +
@@ -163,8 +164,8 @@ class EmbeddedCauset(Causet):
                labelFormat: str = None,
                relate: bool = True) -> Set[CausetEvent]:
         '''
-        Creates new event with the specified coordinates, adds them to 
-        this instance and returns the new set of event.
+        Creates new events with the specified coordinates, adds them to 
+        this instance and returns the new set of events.
         The argument 'coordinates' has to be List[List[float]], 
         List[np.ndarray] or np.ndarray (matrix with a coordinate row for 
         each event).
@@ -182,7 +183,7 @@ class EmbeddedCauset(Causet):
 
     def relate(self, link: bool=True) -> None:
         '''
-        Resets the causal relations between all event based on their 
+        Resets the causal relations between all events based on their 
         embedding in the given spacetimes manifold.
         '''
         _iscausal: Callable[[np.ndarray, np.ndarray],
@@ -209,7 +210,7 @@ class EmbeddedCauset(Causet):
 
     def relabel(self, dim: int = 0, descending: bool = False) -> None:
         '''
-        Resets the labels of all event to ascending (default) or 
+        Resets the labels of all events to ascending (default) or 
         descending integers (converted to str) corresponding to the 
         coordinate component in dimension 'dim'.
         '''

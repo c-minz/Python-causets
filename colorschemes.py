@@ -3,6 +3,7 @@
 Created on 19 Aug 2020
 
 @author: Christoph Minz
+@license: BSD 3-Clause
 '''
 from __future__ import annotations
 from typing import List, Dict, Any

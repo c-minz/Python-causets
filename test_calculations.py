@@ -3,12 +3,13 @@
 Created on 22 Aug 2020
 
 @author: Christoph Minz
+@license: BSD 3-Clause
 '''
 from __future__ import annotations
 from typing import List
 import unittest
 from fractions import Fraction
-from calculations import HarmonicNumber, HarmonicNumbers, \
+from causets.calculations import HarmonicNumber, HarmonicNumbers, \
     HarmonicNumberFraction, HarmonicNumberFractions
 
 

@@ -3,11 +3,12 @@
 Created on 04 Oct 2020
 
 @author: Christoph Minz
+@license: BSD 3-Clause
 '''
 from __future__ import annotations
 import unittest
 import math
-from shapes import CoordinateShape
+from causets.shapes import CoordinateShape
 from matplotlib import pyplot as plt
 
 

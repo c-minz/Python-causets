@@ -3,13 +3,14 @@
 Created on 9 Oct 2020
 
 @author: Christoph Minz
+@license: BSD 3-Clause
 '''
 from __future__ import annotations
-from sprinkledcauset import SprinkledCauset
-from spacetimes import deSitterSpacetime
-from shapes import CoordinateShape
+from causets.sprinkledcauset import SprinkledCauset
+from causets.spacetimes import deSitterSpacetime
+from causets.shapes import CoordinateShape
 from matplotlib import pyplot as plt
-import causetplotting as cplt
+import causets.causetplotting as cplt
 
 # Create a sprinkle from de Sitter spacetime with cosmological horizon at
 # radius 1.0. Coordinates range over a hollow cylinder with height 3.0.

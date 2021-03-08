@@ -3,16 +3,17 @@
 Created on 22 Jul 2020
 
 @author: Christoph Minz
+@license: BSD 3-Clause
 '''
 from __future__ import annotations
 from typing import List, Dict, Any, Callable, Union
-from event import CausetEvent
-from embeddedcauset import EmbeddedCauset
+from causets.causetevent import CausetEvent
+from causets.embeddedcauset import EmbeddedCauset
 import numpy as np
 from matplotlib import pyplot as plt, axes as plta
-import colorschemes as colors
-from spacetimes import Spacetime, FlatSpacetime
-from shapes import CoordinateShape
+import causets.colorschemes as colors
+from causets.spacetimes import Spacetime, FlatSpacetime
+from causets.shapes import CoordinateShape
 
 default_colors: Dict[str, str] = {'links':       'cs:blue',
                                   'linksedge':   'cs:blue',
@@ -95,7 +96,7 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     Default: 'linear'
 
 
-    >> Plot parameters for links, event, labels:
+    >> Plot parameters for links, events, labels:
     'links': bool, Dict[str, Any]
     Switch on the plotting of links with True (Default). A non-empty 
     dictionary will also show links. The parameters have to be supported by 
@@ -113,8 +114,8 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
      'markerfacecolor': default_colors['linksface']}
 
     'events': bool, Dict[str, Any]
-    Switch on the plotting of event with True (Default). A non-empty 
-    dictionary will also show event. The parameters have to be supported by 
+    Switch on the plotting of events with True (Default). A non-empty 
+    dictionary will also show events. The parameters have to be supported by 
     matplotlib.lines.Line2D.
     Default:
     {'linewidth': 2.0,
@@ -125,7 +126,7 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
      'markerfacecolor': default_colors['eventsface']}
 
     'labels': bool, Dict[str, Any]
-    Switch on the plotting of event labels with True (Default). A non-empty 
+    Switch on the plotting of events labels with True (Default). A non-empty 
     dictionary will also show labels. The parameters have to be supported by 
     matplotlib.text.
     Default:
@@ -250,7 +251,7 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     else:
         p_links.update(p_args)
         p['links'] = colors.convertColorsInDict(p_links)
-    # event parameters:
+    # events parameters:
     p_events = {'linewidth': 2.0,
                 'linestyle': '',
                 'marker': 'o',
@@ -281,7 +282,7 @@ def dynamic_parameter(function: str, dim: int, timedepth: float,
                       alpha_max: float) -> Callable[[float], float]:
     '''
     Returns a function handle to compute the `alpha` parameter for 
-    causal cones, and also in dynamic plot mode for links and event.
+    causal cones, and also in dynamic plot mode for links and events.
     '''
     _timefade: float
     if timedepth == 0.0:
@@ -312,7 +313,8 @@ def dynamic_parameter(function: str, dim: int, timedepth: float,
 
 def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
             plotAxes: plta.Axes = None, spacetime: Spacetime = None,
-            **kwargs) -> Callable[[float], Dict[str, Any]]:
+            **kwargs) -> Callable[[Union[float, List[float], np.ndarray]],
+                                  Dict[str, Any]]:
     '''
     Returns a function handle to a plotting function that accepts the single 
     input `time`, which has to be a list or np.ndarray of one or two float 
@@ -373,12 +375,14 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
         plot_spacetime = spacetime
         coordattr = 'Coordinates'
 
-    def _timeslice(time: Union[List[float], np.ndarray]) -> \
+    def _timeslice(time: Union[float, List[float], np.ndarray]) -> \
             Dict[str, Any]:
         '''
         Core plot function that returns a dictionary of plot object 
         pointers.
         '''
+        if isinstance(time, float):
+            time = [time, time]
         # plot cones:
         if isPlottingPastcones or isPlottingFuturecones:
             temp_cone: Any
@@ -418,7 +422,7 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
                     temp_cone = plotfcone(c)
                     if temp_cone is not None:
                         _hfcn.append(temp_cone)
-        # plot links, event, labels:
+        # plot links, events, labels:
         l: int = -1
         c_a: np.ndarray
         if 'timedepth' in plotting:  # dynamic plots only

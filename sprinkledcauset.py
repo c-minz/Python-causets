@@ -3,16 +3,17 @@
 Created on 22 Jul 2020
 
 @author: Christoph Minz
+@license: BSD 3-Clause
 '''
 from __future__ import annotations
 from typing import Set, List, Iterable, Union
 import numpy as np
 import math
 from numpy.random import default_rng
-from event import CausetEvent
-from embeddedcauset import EmbeddedCauset
-from shapes import CoordinateShape
-from spacetimes import Spacetime
+from causets.causetevent import CausetEvent
+from causets.embeddedcauset import EmbeddedCauset
+from causets.shapes import CoordinateShape
+from causets.spacetimes import Spacetime
 
 
 class SprinkledCauset(EmbeddedCauset):
@@ -32,14 +33,14 @@ class SprinkledCauset(EmbeddedCauset):
         spacetime subset with dimension `dim` of at least 1. 
 
         The arguments `dim`, `shape` and `spacetime` are handled by the 
-        super class `EmbeddedCauset` before event are sprinkled.
+        super class `EmbeddedCauset` before events are sprinkled.
 
         'card': int
-        Number of sprinkled event.
+        Number of sprinkled events.
 
         'intensity': float
         Sprinkling intensity parameter, the expected number of 
-        sprinkled event.
+        sprinkled events.
         '''
         # initialise shape and spacetime with super class:
         super().__init__(dim, spacetime, shape)
@@ -54,8 +55,8 @@ class SprinkledCauset(EmbeddedCauset):
     def Intensity(self) -> float:
         '''
         Returns the sprinkling intensity, which is the expected 
-        number of sprinkled event. The exact number of sprinkled 
-        event is given by the property 'Card'.
+        number of sprinkled events. The exact number of sprinkled 
+        events is given by the property 'Card'.
         '''
         return self._intensity
 
@@ -137,7 +138,7 @@ class SprinkledCauset(EmbeddedCauset):
     def sprinkle(self, count: int, rng=default_rng(),
                  shape: CoordinateShape = None) -> Set[CausetEvent]:
         '''
-        Creates a fixed number of new event by sprinkling into `shape` 
+        Creates a fixed number of new events by sprinkling into `shape` 
         (by default the entire embedding region).
         '''
         if count < 0:
