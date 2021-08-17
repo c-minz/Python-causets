@@ -11,6 +11,8 @@ import math
 import numpy as np
 from matplotlib import pyplot as plt, patches, axes as plt_axes
 
+default_samplingsize: int = 128  # default number of edges for curved objects
+
 
 class CoordinateShape(object):
     '''
@@ -264,16 +266,16 @@ class CoordinateShape(object):
         shift: float = self.__center[dim]
         return (-l + shift, l + shift)
 
-    def plot(self, dimensions: List[int], axes: plt_axes.Axes = None,
+    def plot(self, dims: List[int], axes: plt_axes.Axes = None,
              **kwargs) -> Union[patches.Patch,
                                 List[Tuple[np.ndarray, np.ndarray, np.ndarray]]]:
         '''
-        Plots a cut through the center of the shape showing `dimensions` that 
+        Plots a cut through the center of the shape showing `dims` that 
         can be a list of 2 integers (for a 2D plot) or 3 integers (for a 3D 
         plot). The argument `axes` specifies the plot axes object to be used 
         (by default the current axes of `matplotlib`). 
         As optional keyword arguments, the plotting options can be specified 
-        that will overwrite the detauls, which are for 2D:
+        that will overwrite the defaults that are for 2D:
         {'edgecolor': 'black', 'facecolor': 'black', 'alpha': 0.05}
         and for 3D:
         {'edgecolor': None, 'color': 'black', 'alpha': 0.05}
@@ -282,7 +284,7 @@ class CoordinateShape(object):
         The Patch object is returned for a 2D plot and a list of surfaces is 
         returned for a 3D plot.
         '''
-        is3d: bool = len(dimensions) == 3
+        is3d: bool = len(dims) == 3
         if axes is None:
             if is3d:
                 axes = plt.gca(projection='3d')
@@ -299,90 +301,85 @@ class CoordinateShape(object):
         plotoptions.update(kwargs)
         timeaxis: int
         try:
-            timeaxis = dimensions.index(0)
+            timeaxis = dims.index(0)
         except ValueError:
             timeaxis = -1
         hollow: float = 0.0
         if 'hollow' in self.__params:
             hollow = self.__params['hollow']
         if is3d:
-            surfaces: List[np.ndarray]
+            S: List[Tuple[np.ndarray, np.ndarray, np.ndarray]]
             r: float
             if self.Name == 'cube':
-                surfaces = [CubeSurface(self.Center[dimensions],
-                                        self.__params['edge'])]
+                S = CubeSurface(self.Center[dims],
+                                self.__params['edge'])
             elif self.Name == 'ball' or \
                     ((timeaxis < 0) and (self.Name in {'diamond', 'cylinder'})):
                 r = self.__params['radius']
-                oBall: np.ndarray = BallSurface(self.Center[dimensions], r)
-                if hollow == 0.0:
-                    surfaces = [oBall]
-                else:
-                    surfaces = [BallSurface(self.Center[dimensions], hollow * r),
-                                oBall]
+                S = BallSurface(self.Center[dims], r)
+                if hollow > 0.0:
+                    S = BallSurface(self.Center[dims],
+                                    hollow * r) + S
             elif self.Name == 'cylinder':
                 r = self.__params['radius']
                 h: float = self.__params['duration']
-                surfaces = [CylinderSurface(self.Center[dimensions],
-                                            r, h, hollow, timeaxis)]
+                S = CylinderSurface(self.Center[dims],
+                                    r, h, hollow, timeaxis)
             elif self.Name == 'diamond':
                 r = self.__params['radius']
-                conecenter: np.ndarray = self.Center[dimensions]
+                conecenter: np.ndarray = self.Center[dims]
                 tip: np.ndarray = conecenter.copy()
                 top: np.ndarray = conecenter.copy()
                 tip[timeaxis] = conecenter[timeaxis] - r
                 top[timeaxis] = conecenter[timeaxis] + r
-                oDmd: List[np.ndarray] = [OpenConeSurface(tip, r, r, timeaxis),
-                                          OpenConeSurface(top, r, -r, timeaxis)]
-                if hollow == 0.0:
-                    surfaces = oDmd
-                else:
+                S = OpenConeSurface(tip, r, r, timeaxis) + \
+                    OpenConeSurface(top, r, -r, timeaxis)
+                if hollow > 0.0:
                     r *= hollow
                     tip[timeaxis] = conecenter[timeaxis] - r
                     top[timeaxis] = conecenter[timeaxis] + r
-                    surfaces = [OpenConeSurface(tip, r, r, timeaxis),
-                                OpenConeSurface(top, r, -r, timeaxis),
-                                *oDmd]
+                    S = OpenConeSurface(tip, r, r, timeaxis) + \
+                        OpenConeSurface(top, r, -r, timeaxis) + S
             else:  # cuboid
-                surfaces = [CuboidSurface(self.Center[dimensions],
-                                          self.__params['edges'][dimensions])]
-            for XYZ in surfaces:
+                S = CuboidSurface(self.Center[dims],
+                                  self.__params['edges'][dims])
+            for XYZ in S:
                 axes.plot_surface(*XYZ, **plotoptions)
-            return surfaces
+            return S
         else:
             p: patches.Patch
             a: float
             b: float
             if self.Name == 'cube':
                 a = self.__params['edge']
-                p = patches.Rectangle(self.Center[dimensions] -
+                p = patches.Rectangle(self.Center[dims] -
                                       0.5 * np.array([a, a]),
                                       width=a, height=a, **plotoptions)
             elif self.Name == 'ball' or \
                     ((timeaxis < 0) and (self.Name in {'diamond', 'cylinder'})):
                 if hollow == 0.0:
-                    p = patches.Circle(self.Center[dimensions],
+                    p = patches.Circle(self.Center[dims],
                                        self.__params['radius'], **plotoptions)
                 else:
-                    p = patches.Polygon(CircleEdge(self.Center[dimensions],
+                    p = patches.Polygon(CircleEdge(self.Center[dims],
                                                    self.__params['radius'],
                                                    hollow),
                                         **plotoptions)
             elif self.Name == 'cylinder':
-                cyl: np.ndarray = CylinderEdge(self.Center[dimensions],
-                                               self.__params['radius'],
-                                               self.__params['duration'],
-                                               hollow)
+                cyl: np.ndarray = CylinderCutEdge(self.Center[dims],
+                                                  self.__params['radius'],
+                                                  self.__params['duration'],
+                                                  hollow)
                 if timeaxis == 0:
                     cyl = cyl[:, [1, 0]]
                 p = patches.Polygon(cyl, **plotoptions)
             elif self.Name == 'diamond':
-                p = patches.Polygon(DiamondEdge(self.Center[dimensions],
+                p = patches.Polygon(DiamondEdge(self.Center[dims],
                                                 self.__params['radius'], hollow),
                                     **plotoptions)
             else:  # cuboid
-                edges: np.ndarray = self.__params['edges'][dimensions]
-                p = patches.Rectangle(self.Center[dimensions] - 0.5 * edges,
+                edges: np.ndarray = self.__params['edges'][dims]
+                p = patches.Rectangle(self.Center[dims] - 0.5 * edges,
                                       width=edges[0], height=edges[1],
                                       **plotoptions)
             axes.add_patch(p)
@@ -402,20 +399,52 @@ def RectangleEdge(left: float, bottom: float, width: float,
 
 
 def CircleEdge(center: np.ndarray, radius: float,
-               hollow: float = 0.0, samplesize: int = 32) -> np.ndarray:
+               hollow: float = 0.0, samplingsize: int = -1) -> np.ndarray:
     '''
     Returns a matrix of size m x 2 that describes the edge of a circle.
-    If the circle is hollow, `m = 2 * samplesize + 1`, else it is `samplesize`.
+    If the circle is hollow, `m = 2 * samplingsize + 3`, else it is 
+    `samplingsize + 1`, where `samplingsize` is set to `default_samplingsize` 
+    if non-positive.
     '''
-    edge: np.ndarray = np.empty((samplesize if hollow == 0.0
-                                 else 2 * samplesize + 1, 2))
-    phi = np.linspace(0.0, 2.0 * np.pi, samplesize)
-    edge[:samplesize, 0] = center[0] + radius * np.cos(phi)
-    edge[:samplesize, 1] = center[1] + radius * np.sin(phi)
+    if samplingsize <= 0:
+        samplingsize = default_samplingsize
+    samplingsize = samplingsize + 1
+    edge: np.ndarray = np.empty((samplingsize if hollow == 0.0
+                                 else 2 * samplingsize + 1, 2))
+    phi = np.linspace(0.0, 2.0 * np.pi, samplingsize)
+    edge[:samplingsize, 0] = center[0] + radius * np.cos(phi)
+    edge[:samplingsize, 1] = center[1] + radius * np.sin(phi)
     if hollow > 0.0:
-        edge[samplesize, :] = np.array([[np.nan, np.nan]])
-        edge[(samplesize + 1):, 0] = center[0] + hollow * radius * np.cos(-phi)
-        edge[(samplesize + 1):, 1] = center[1] + hollow * radius * np.sin(-phi)
+        edge[samplingsize, :] = np.array([[np.nan, np.nan]])
+        edge[(samplingsize + 1):, 0] = center[0] + \
+            hollow * radius * np.cos(-phi)
+        edge[(samplingsize + 1):, 1] = center[1] + \
+            hollow * radius * np.sin(-phi)
+    return edge
+
+
+def EllipseEdge(center: np.ndarray, radii: np.ndarray,
+                hollow: float = 0.0, samplingsize: int = -1) -> np.ndarray:
+    '''
+    Returns a matrix of size m x 2 that describes the edge of an ellipse.
+    If the ellipse is hollow, `m = 2 * samplingsize + 3`, else it is 
+    `samplingsize + 1`, where `samplingsize` is set to `default_samplingsize` 
+    if non-positive.
+    '''
+    if samplingsize <= 0:
+        samplingsize = default_samplingsize
+    samplingsize = samplingsize + 1
+    edge: np.ndarray = np.empty((samplingsize if hollow == 0.0
+                                 else 2 * samplingsize + 1, 2))
+    phi = np.linspace(0.0, 2.0 * np.pi, samplingsize)
+    edge[:samplingsize, 0] = center[0] + radii[0] * np.cos(phi)
+    edge[:samplingsize, 1] = center[1] + radii[1] * np.sin(phi)
+    if hollow > 0.0:
+        edge[samplingsize, :] = np.array([[np.nan, np.nan]])
+        edge[(samplingsize + 1):, 0] = center[0] + \
+            hollow * radii[0] * np.cos(-phi)
+        edge[(samplingsize + 1):, 1] = center[1] + \
+            hollow * radii[1] * np.sin(-phi)
     return edge
 
 
@@ -442,11 +471,11 @@ def DiamondEdge(center: np.ndarray, radius: float,
     return edge
 
 
-def CylinderEdge(center: np.ndarray, radius: float, height: float,
-                 hollow: float = 0.0) -> np.ndarray:
+def CylinderCutEdge(center: np.ndarray, radius: float, height: float,
+                    hollow: float = 0.0) -> np.ndarray:
     '''
-    Returns a matrix of size m x 2 that describes the edge of a cylinder 
-    projection to its side, pointing upwards.
+    Returns a matrix of size m x 2 that describes the (x, z) coordinates 
+    of the edge of the y=0 cut through a cylinder aligned along the z-axis.
     If the cylinder is hollow, `m = 11`, else it is `5`.
     '''
     height_half: float = height / 2
@@ -463,7 +492,7 @@ def CylinderEdge(center: np.ndarray, radius: float, height: float,
 
 
 def CuboidSurface(center: np.ndarray, edges: np.ndarray) -> \
-        Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        List[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     '''
     Returns the XYZ data that describes a cuboid surface.
     Each data matrix has size `5` x `4`.
@@ -472,23 +501,30 @@ def CuboidSurface(center: np.ndarray, edges: np.ndarray) -> \
     yed: float = edges[1]
     zed: float = edges[2]
     corner: np.ndarray = center - edges / 2
-    X: np.ndarray = corner[0] + np.array([[0.0, xed, xed, 0.0, 0.0],
-                                          [0.0, xed, xed, 0.0, 0.0],
-                                          [0.0, xed, xed, 0.0, 0.0],
-                                          [0.0, xed, xed, 0.0, 0.0]])
-    Y: np.ndarray = corner[1] + np.array([[0.0, 0.0, yed, yed, 0.0],
-                                          [0.0, 0.0, yed, yed, 0.0],
-                                          [0.0, 0.0, 0.0, 0.0, 0.0],
-                                          [yed, yed, yed, yed, yed]])
-    Z: np.ndarray = corner[2] + np.array([[0.0, 0.0, 0.0, 0.0, 0.0],
-                                          [zed, zed, zed, zed, zed],
-                                          [0.0, 0.0, zed, zed, 0.0],
-                                          [0.0, 0.0, zed, zed, 0.0]])
-    return (X, Y, Z)
+    S: List[Tuple[np.ndarray, np.ndarray, np.ndarray]] = []
+    S.append((np.array([[0.0]]) + corner[0],
+              np.array([[0.0, 0.0, yed, yed]]) + corner[1],
+              np.array([[0.0, zed, zed, 0.0]]).transpose() + corner[2]))
+    S.append((np.array([[0.0, xed, xed, 0.0]]).transpose() + corner[0],
+              np.array([[0.0]]) + corner[1],
+              np.array([[0.0, 0.0, zed, zed]]) + corner[2]))
+    S.append((np.array([[0.0, 0.0, xed, xed]]) + corner[0],
+              np.array([[0.0, yed, yed, 0.0]]).transpose() + corner[1],
+              np.array([[0.0]]) + corner[2]))
+    S.append((np.array([[xed]]) + corner[0],
+              np.array([[0.0, yed, yed, 0.0]]) + corner[1],
+              np.array([[0.0, 0.0, zed, zed]]).transpose() + corner[2]))
+    S.append((np.array([[0.0, 0.0, xed, xed]]).transpose() + corner[0],
+              np.array([[yed]]) + corner[1],
+              np.array([[0.0, zed, zed, 0.0]]) + corner[2]))
+    S.append((np.array([[0.0, xed, xed, 0.0]]) + corner[0],
+              np.array([[0.0, 0.0, yed, yed]]).transpose() + corner[1],
+              np.array([[zed]]) + corner[2]))
+    return S
 
 
 def CubeSurface(center: np.ndarray, edge: float) -> \
-        Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        List[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     '''
     Returns a `CuboidSurface` object with the same `edge` length in all 
     dimensions.
@@ -497,32 +533,41 @@ def CubeSurface(center: np.ndarray, edge: float) -> \
 
 
 def BallSurface(center: np.ndarray, radius: float,
-                samplesize: int = 33) -> \
-        Tuple[np.ndarray, np.ndarray, np.ndarray]:
+                samplingsize: int = -1) -> \
+        List[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     '''
     Returns the XYZ data that describes a ball surface.
-    Each data matrix has size `samplesize` x `samplesize/2`.
+    Each data matrix has size `samplingsize + 1` x `(samplingsize + 1)/2`, 
+    where `samplingsize` is set to `default_samplingsize` if non-positive.
     '''
-    phi: np.ndarray = np.linspace(0.0, 2.0 * np.pi, samplesize)
-    theta: np.ndarray = np.linspace(0.0, np.pi, round(samplesize / 2))
-    return (center[0] + radius * np.outer(np.cos(phi), np.sin(theta)),
-            center[1] + radius * np.outer(np.sin(phi), np.sin(theta)),
-            center[2] + radius * np.outer(np.ones(samplesize), np.cos(theta)))
+    if samplingsize <= 0:
+        samplingsize = default_samplingsize
+    samplingsize = samplingsize + 1
+    phi: np.ndarray = np.linspace(0.0, 2.0 * np.pi, samplingsize)
+    theta: np.ndarray = np.linspace(0.0, np.pi, round(samplingsize / 2))
+    return [(np.outer(np.cos(phi), np.sin(theta)) * radius + center[0],
+             np.outer(np.sin(phi), np.sin(theta)) * radius + center[1],
+             np.outer(np.ones(samplingsize), np.cos(theta)) * radius
+             + center[2])]
 
 
 def CylinderSurface(center: np.ndarray, radius: float, height: float,
                     hollow: float = 0.0, zaxis: int = 2,
-                    samplesize: int = 33) -> \
-        Tuple[np.ndarray, np.ndarray, np.ndarray]:
+                    samplingsize: int = -1) -> \
+        List[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     '''
     Returns the XYZ data that describes a (hollow) cylinder surface.
-    Each data matrix has size `4` x `samplesize` if `hollow == 0.0`, 
-    or `5` x `samplesize` if `1.0 > hollow > 0.0`, 
+    Each data matrix has size `4` x `samplingsize + 1` if `hollow == 0.0`, 
+    or `5` x `samplingsize + 1` if `1.0 > hollow > 0.0`, where 
+    `samplingsize` is set to `default_samplingsize` if non-positive.
     '''
-    phi: np.ndarray = np.linspace(0.0, 2.0 * np.pi, samplesize)
+    if samplingsize <= 0:
+        samplingsize = default_samplingsize
+    samplingsize = samplingsize + 1
+    phi: np.ndarray = np.linspace(0.0, 2.0 * np.pi, samplingsize)
     radii: np.ndarray
     relZ: np.ndarray
-    sampling: np.ndarray = np.ones(samplesize)
+    sampling: np.ndarray = np.ones(samplingsize)
     if hollow == 0.0:
         radii = radius * np.array([0.0, 1.0, 1.0, 0.0])
         relZ = np.array([-sampling, -sampling, sampling, sampling])
@@ -530,34 +575,38 @@ def CylinderSurface(center: np.ndarray, radius: float, height: float,
         radii = radius * np.array([hollow, 1.0, 1.0, hollow, hollow])
         relZ = np.array([-sampling, -sampling, sampling, sampling, -sampling])
     XYZ: Tuple[np.ndarray, np.ndarray, np.ndarray] = \
-        (center[0] + np.outer(radii, np.cos(phi)),
-         center[1] + np.outer(radii, np.sin(phi)),
-         center[2] + (height / 2) * relZ)
+        (np.outer(radii, np.cos(phi)) + center[0],
+         np.outer(radii, np.sin(phi)) + center[1],
+         (height / 2) * relZ + center[2])
     # rotate:
     if zaxis == 0:
         XYZ = (XYZ[2], XYZ[0], XYZ[1])
     elif zaxis == 1:
         XYZ = (XYZ[1], XYZ[2], XYZ[0])
-    return XYZ
+    return [XYZ]
 
 
 def OpenConeSurface(tip: np.ndarray, radius: float, height: float,
-                    zaxis: int = 2, samplesize: int = 33) -> \
-        Tuple[np.ndarray, np.ndarray, np.ndarray]:
+                    zaxis: int = 2, samplingsize: int = -1) -> \
+        List[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     '''
     Returns the XYZ data that describes an open cone surface.
-    Each data matrix has size `2` x `samplesize`.
+    Each data matrix has size `2` x `samplingsize + 1`, where 
+    `samplingsize` is set to `default_samplingsize` if non-positive.
     '''
-    phi: np.ndarray = np.linspace(0.0, 2.0 * np.pi, samplesize)
+    if samplingsize <= 0:
+        samplingsize = default_samplingsize
+    samplingsize = samplingsize + 1
+    phi: np.ndarray = np.linspace(0.0, 2.0 * np.pi, samplingsize)
     radii: np.ndarray = radius * np.array([0.0, 1.0])
     XYZ: Tuple[np.ndarray, np.ndarray, np.ndarray] = \
-        (tip[0] + np.outer(radii, np.cos(phi)),
-         tip[1] + np.outer(radii, np.sin(phi)),
-         tip[2] + height *
-         np.array([np.zeros(samplesize), np.ones(samplesize)]))
+        (np.outer(radii, np.cos(phi)) + tip[0],
+         np.outer(radii, np.sin(phi)) + tip[1],
+         np.array([np.zeros(samplingsize), np.ones(samplingsize)]) * height
+         + tip[2])
     # rotate:
     if zaxis == 0:
         XYZ = (XYZ[2], XYZ[0], XYZ[1])
     elif zaxis == 1:
         XYZ = (XYZ[1], XYZ[2], XYZ[0])
-    return XYZ
+    return [XYZ]

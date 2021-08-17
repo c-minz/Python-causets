@@ -9,9 +9,12 @@ from __future__ import annotations
 from typing import Callable, Tuple, List, Dict, Any, Union
 import numpy as np
 import math
-from matplotlib import patches, axes
-from causets.shapes import BallSurface, OpenConeSurface, CoordinateShape, CircleEdge
+from matplotlib import pyplot as plt, patches, axes as plt_axes
+from causets.shapes import BallSurface, OpenConeSurface, CoordinateShape, CircleEdge, EllipseEdge
 from causets.calculations import NewtonsMethod as Newton
+
+default_samplingsize: int = 128  # default value for sampling lightcones
+causality_eps: float = 0.00000000000001  # for small causality rounding errors
 
 
 class Spacetime(object):
@@ -26,8 +29,8 @@ class Spacetime(object):
 
     def __init__(self) -> None:
         self._dim = 2
-        self._name = 'flat'
-        self._metricname = 'Minkowski'
+        self._name = ''
+        self._metricname = 'unknown'
         self._params = {}
 
     def __str__(self):
@@ -87,20 +90,17 @@ class Spacetime(object):
         return isCausal
 
     def _T_slice_sampling(self, t: float, origin: np.ndarray,
-                          samplesize: int = 32) -> np.ndarray:
+                          samplingsize: int = -1) -> np.ndarray:
         '''
         Internal function for the time sampling array for a cone from 
         `origin` to time `t`.
         '''
-        samplesize = int(samplesize * round(abs(t - origin[0]) / 50.0))
-        if samplesize <= 1:
-            samplesize = 2
-        elif samplesize >= 100:
-            samplesize = 100
-        return np.linspace(origin[0], t, samplesize)
+        samplingsize = samplingsize if samplingsize >= 0 \
+            else default_samplingsize
+        return np.linspace(origin[0], t, samplingsize)
 
     def _XT_slice(self, t: float, origin: np.ndarray, xdim: int,
-                  samplesize: int = 32) -> np.ndarray:
+                  samplingsize: int = -1) -> np.ndarray:
         '''
         Internal function for the cone plotting from `origin` to time `t` 
         projected onto a X-T (space-time) plane with space dimension `xdim`. 
@@ -108,7 +108,7 @@ class Spacetime(object):
         raise NotImplementedError()
 
     def _XY_slice(self, t: float, origin: np.ndarray, dims: List[int],
-                  samplesize: int = 32) -> np.ndarray:
+                  samplingsize: int = -1) -> np.ndarray:
         '''
         Internal function for the cone plotting from `origin` to time `t` 
         projected onto a X-Y (space-space) plane with space dimensions 
@@ -117,7 +117,7 @@ class Spacetime(object):
         raise NotImplementedError()
 
     def _XYZ_slice(self, t: float, origin: np.ndarray, dims: List[int],
-                   samplesize: int = 32) -> \
+                   samplingsize: int = -1) -> \
             Tuple[np.ndarray, np.ndarray, np.ndarray]:
         '''
         Internal function for the cone plotting from `origin` to time `t` 
@@ -126,17 +126,18 @@ class Spacetime(object):
         '''
         raise NotImplementedError()
 
-    def ConePlotter(self, ax: axes.Axes, dims: List[int],
-                    plotting_params: Dict[str, Any],
-                    timesign: float, timeslice: float,
-                    dynamicAlpha: Callable[[float], float] = None) -> \
-            Callable[[np.ndarray],
+    def ConePlotter(self, dims: List[int], plotting_params: Dict[str, Any],
+                    timesign: float, axes: plt_axes.Axes = None,
+                    dynamicAlpha: Callable[[float], float] = None,
+                    samplingsize: int = -1) -> \
+            Callable[[np.ndarray, float],
                      Union[patches.Patch,
                            List[Tuple[np.ndarray, np.ndarray, np.ndarray]]]]:
         '''
         Returns a function handle to plot past (`timesign == -1`) or future 
         (`timesign == 1`) causal cones for the spacetime `self` into the axes 
-        object `ax` up to the coordinate time `timeslice` with plotting 
+        object `axes` (given by gca() by default, with projection='3d' if 
+        len(dims) > 2) up to the coordinate time `timeslice` with plotting 
         parameters given in the dictionary `plotting_params`. The time 
         coordinate goes along the axis with index `timeaxis`. As optional 
         parameter `dynamicAlpha` a function (mapping float to float) can be 
@@ -146,6 +147,11 @@ class Spacetime(object):
         It is a list of 2 or 3 integers, setting up a 2D or 3D plot.
         '''
         is3d: bool = len(dims) == 3
+        if axes is None:
+            if is3d:
+                axes = plt.gca(projection='3d')
+            else:
+                axes = plt.gca(projection=None)
         timeaxis: int
         try:
             timeaxis = dims.index(0)
@@ -153,15 +159,19 @@ class Spacetime(object):
             timeaxis = -1
         xaxis: int = (timeaxis + 1) % len(dims)
         yaxis: int = (timeaxis + 2) % len(dims)
+        if samplingsize <= 0:
+            samplingsize = default_samplingsize
 
-        def cone(origin: np.ndarray) -> \
+        def cone(origin: np.ndarray, timeslice: float) -> \
                 Union[patches.Patch,
                       List[Tuple[np.ndarray, np.ndarray, np.ndarray]]]:
             '''
             Creates matplotlib surface plots for a 3D causal cone, or a patch 
-            for a 2D causal cone added to the axes `ax`. The  emanates 
+            for a 2D causal cone added to the axes `axes`. The light emanates 
             from the coordinates `origin`, which has to be a `numpy` vector 
             with a length given by the coordinate dimensions of the spacetime.
+            The lightcone reaches up to `timeslice`.
+
             The keyword argument `plotting_params` (with a dynamically 
             adjusted 'alpha' parameter) are passed to `plot_surface` methods 
             if it is 3D or to the Patch objects if it is 2D.
@@ -181,18 +191,20 @@ class Spacetime(object):
             T: np.ndarray
             samplesize_t: int
             if timeaxis >= 0:
-                T = self._T_slice_sampling(timeslice, origin)
+                T = self._T_slice_sampling(timeslice, origin, samplingsize)
                 samplesize_t = T.size
             if is3d:
                 X: np.ndarray
                 Y: np.ndarray
                 Z: np.ndarray
                 if timeaxis < 0:
-                    X, Y, Z = self._XYZ_slice(timeslice, origin, dims)
+                    X, Y, Z = self._XYZ_slice(timeslice, origin, dims,
+                                              samplingsize)
                 else:
                     for i, t in enumerate(T):
                         XY = self._XY_slice(t, origin,
-                                            [dims[xaxis], dims[yaxis]])
+                                            [dims[xaxis], dims[yaxis]],
+                                            samplingsize)
                         if XY is None:
                             return None
                         elif i == 0:
@@ -204,20 +216,22 @@ class Spacetime(object):
                         X, Y, Z = Z, X, Y
                     elif timeaxis == 1:
                         X, Y, Z = Y, Z, X
-                ax.plot_surface(X, Y, Z, **plotting_params)
+                axes.plot_surface(X, Y, Z, **plotting_params)
                 return [(X, Y, Z)]
             else:
                 if timeaxis < 0:
-                    XY = self._XY_slice(timeslice, origin, dims)
+                    XY = self._XY_slice(timeslice, origin, dims,
+                                        samplingsize)
                 else:
-                    XY = self._XT_slice(timeslice, origin, dims[xaxis])
+                    XY = self._XT_slice(timeslice, origin, dims[xaxis],
+                                        samplingsize)
                 if XY is None:
                     return None
                 # rotate:
                 if timeaxis == 0:
                     XY = np.fliplr(XY)
                 p: patches.Patch = patches.Polygon(XY, **plotting_params)
-                ax.add_patch(p)
+                axes.add_patch(p)
                 return p
 
         return cone
@@ -278,7 +292,8 @@ class FlatSpacetime(Spacetime):
                 def isCausal_flat2D(x: np.ndarray,
                                     y: np.ndarray) -> Tuple[bool, bool]:
                     t_delta: float = y[0] - x[0]
-                    isCausal: bool = abs(t_delta) >= abs(y[1] - x[1])
+                    isCausal: bool = abs(t_delta) >= \
+                        abs(y[1] - x[1]) - causality_eps
                     return ((t_delta >= 0.0) and isCausal,
                             (t_delta < 0.0) and isCausal)
                 return isCausal_flat2D
@@ -287,7 +302,7 @@ class FlatSpacetime(Spacetime):
                                   y: np.ndarray) -> Tuple[bool, bool]:
                     t_delta: float = y[0] - x[0]
                     isCausal: bool = np.square(t_delta) >= \
-                        sum(np.square(y[1:] - x[1:]))
+                        sum(np.square(y[1:] - x[1:])) - causality_eps
                     return ((t_delta >= 0.0) and isCausal,
                             (t_delta < 0.0) and isCausal)
                 return isCausal_flat
@@ -300,7 +315,8 @@ class FlatSpacetime(Spacetime):
                     r_delta: float = abs(y[1] - x[1])
                     if _period[0] > 0.0:
                         r_delta = min(r_delta, _period[0] - r_delta)
-                    isCausal: bool = abs(t_delta) >= abs(r_delta)
+                    isCausal: bool = abs(t_delta) >= \
+                        abs(r_delta) - causality_eps
                     return ((t_delta >= 0.0) and isCausal,
                             (t_delta < 0.0) and isCausal)
                 return isCausal_flat2Dperiodic
@@ -315,19 +331,25 @@ class FlatSpacetime(Spacetime):
                             r_delta_i = min(r_delta_i,
                                             _period[i - 1] - r_delta_i)
                         r2_delta += r_delta_i**2
-                    isCausal: bool = np.square(t_delta) >= r2_delta
+                    isCausal: bool = np.square(t_delta) >= \
+                        r2_delta - causality_eps
                     return ((t_delta >= 0.0) and isCausal,
                             (t_delta < 0.0) and isCausal)
                 return isCausal_flatperiodic
 
-    def ConePlotter(self, ax: axes.Axes, dims: List[int],
-                    plotting_params: Dict[str, Any],
-                    timesign: float, timeslice: float,
-                    dynamicAlpha: Callable[[float], float] = None) -> \
-            Callable[[np.ndarray],
+    def ConePlotter(self, dims: List[int], plotting_params: Dict[str, Any],
+                    timesign: float, axes: plt_axes.Axes = None,
+                    dynamicAlpha: Callable[[float], float] = None,
+                    samplingsize: int = -1) -> \
+            Callable[[np.ndarray, float],
                      Union[patches.Patch,
                            List[Tuple[np.ndarray, np.ndarray, np.ndarray]]]]:
         is3d: bool = len(dims) == 3
+        if axes is None:
+            if is3d:
+                axes = plt.gca(projection='3d')
+            else:
+                axes = plt.gca(projection=None)
         timeaxis: int
         try:
             timeaxis = dims.index(0)
@@ -378,8 +400,10 @@ class FlatSpacetime(Spacetime):
                           for x in x_s for y in y_s]
             else:
                 shifts = [np.array([0.0, 0.0])]
+        if samplingsize <= 0:
+            samplingsize = default_samplingsize
 
-        def cone(origin: np.ndarray) -> \
+        def cone(origin: np.ndarray, timeslice: float) -> \
                 Union[patches.Patch,
                       List[Tuple[np.ndarray, np.ndarray, np.ndarray]]]:
             r: float = timesign * (timeslice - origin[0])
@@ -392,13 +416,18 @@ class FlatSpacetime(Spacetime):
                 plotting_params.update({'alpha': conealpha})
             origin = origin[dims]
             if is3d:
-                XYZ_list: List[Tuple[np.ndarray, np.ndarray, np.ndarray]] = \
-                    [BallSurface(origin - s, r) if timeaxis < 0
-                     else OpenConeSurface(origin - s, r,
-                                          timesign * r, timeaxis)
-                     for s in shifts]
+                XYZ_list: List[Tuple[np.ndarray, np.ndarray, np.ndarray]] = []
+                if timeaxis < 0:
+                    for s in shifts:
+                        XYZ_list = XYZ_list + BallSurface(
+                            origin - s, r, samplingsize)
+                else:
+                    for s in shifts:
+                        XYZ_list = XYZ_list + OpenConeSurface(
+                            origin - s, r, timesign * r,
+                            timeaxis, samplingsize)
                 for XYZ in XYZ_list:
-                    ax.plot_surface(*XYZ, **plotting_params)
+                    axes.plot_surface(*XYZ, **plotting_params)
                 return XYZ_list
             else:
                 XY: np.array = None
@@ -417,12 +446,13 @@ class FlatSpacetime(Spacetime):
                              np.array([origin[0] - r, timeslice]) - s,
                              origin - s])
                     else:
-                        XYpart = CircleEdge(origin - s, radius=r)
+                        XYpart = CircleEdge(origin - s, radius=r,
+                                            samplingsize=samplingsize)
                     XY = XYpart if i == 0 \
                         else np.concatenate(
                             (XY, np.array([[np.nan, np.nan]]), XYpart))
                 p: patches.Patch = patches.Polygon(XY, **plotting_params)
-                ax.add_patch(p)
+                axes.add_patch(p)
                 return p
 
         return cone
@@ -459,8 +489,8 @@ class _dSSpacetime(Spacetime):
         raise NotImplementedError()
 
     def _XT_slice(self, t: float, origin: np.ndarray, xdim: int,
-                  samplesize: int = 32) -> np.ndarray:
-        T: np.ndarray = self._T_slice_sampling(t, origin, samplesize)
+                  samplingsize: int = -1) -> np.ndarray:
+        T: np.ndarray = self._T_slice_sampling(t, origin, samplingsize)
         XT: np.ndarray = np.zeros((2 * T.size - 1, 2))
         if origin.size == 2:
             x0: float = origin[1] / self._alpha
@@ -478,7 +508,7 @@ class _dSSpacetime(Spacetime):
                 for ydim in range(1, origin.size):
                     if ydim == xdim:
                         continue
-                    t_X = self._XY_slice(t, origin, [xdim, ydim], samplesize)
+                    t_X = self._XY_slice(t, origin, [xdim, ydim], samplingsize)
                     if t_X is None:
                         return None
                     x_min = np.min([x_min, np.min(t_X[:, 0])])
@@ -524,16 +554,11 @@ class deSitterSpacetime(_dSSpacetime):
             x1_y: float = amp_y * math.cosh(y[0] / self._alpha)
             x0_delta: float = x0_y - x0_x
             isCausal: bool = x0_delta**2 >= \
-                sum(np.square(y[1:] - x[1:])) + (x1_y - x1_x)**2
+                sum(np.square(y[1:] - x[1:])) + (x1_y - x1_x)**2 - \
+                causality_eps
             return ((x0_delta >= 0.0) and isCausal,
                     (x0_delta < 0.0) and isCausal)
         return isCausal_dS
-
-    def _T_slice_sampling(self, t: float, origin: np.ndarray,
-                          samplesize: int = 32) -> np.ndarray:
-        samples: int = min(samplesize * round(abs(t - origin[0]) /
-                                              self._alpha) + 2, samplesize)
-        return np.linspace(origin[0], t, samples)
 
     def _XT_slice2(self, t: float, t0: float,
                    x0: float) -> Tuple[float, float]:
@@ -541,46 +566,46 @@ class deSitterSpacetime(_dSSpacetime):
                 self._alpha * np.tanh(np.arctanh(x0) + (t - t0) / self._alpha))
 
     def _XY_slice(self, t: float, origin: np.ndarray, dims: List[int],
-                  samplesize: int = 30) -> np.ndarray:
+                  samplingsize: int = -1) -> np.ndarray:
         # Define initial values `(t0, r0, phi0, Theta0)` from `origin`,
-        # where Theta0 is the product of all remaining angular components,
-        # like sin(theta0) in 4 dimensions.
+        # where Theta0 is the product of all remaining angular components (for
+        # example, sin(theta0) in 4 dimensions) that is not yet implemented.
+        if samplingsize <= 0:
+            samplingsize = default_samplingsize
         r0_sq: float = np.sum(np.square(origin[1:])) / self._alpha_sq
-        if r0_sq == 0.0:
-            r0_sq = 0.0001
-        elif r0_sq >= 1.0:
+        if r0_sq >= 1.0:
             return None
+        r0: float = np.sqrt(r0_sq)
         t0: float = origin[0]
         phi0: float = np.arctan2(origin[dims[1]], origin[dims[0]])
-        Theta0: float = origin[dims[0]] / (np.sqrt(r0_sq) * np.cos(phi0))
-        # Define initial value range for the angular velocities
-        # omega = d phi / d t, scaled by the initial radius, beta forwards
-        # and beta backwards. The factor `(1.0 - 1.0 / samplesize**2)` is to
-        # avoid a 90deg angle that could give a divergent term (and
-        # duplicate data points).
-        beta_fw: np.ndarray = np.linspace(0.001,
-                                          ((1.0 - 1.0 / samplesize**2) *
-                                           r0_sq / (1 - r0_sq))**0.75,
-                                          samplesize)**(1.0 / 1.5)
-        beta_bw: np.ndarray = -np.flip(beta_fw[1:])
-        # Compute the solution in the 4 quadrants:
-        XY: np.ndarray = np.empty((4 * samplesize - 1, 2))
-        i_start: int = 0
-        for s, beta in [(1, beta_fw), (-1, beta_bw),
-                        (-1, beta_fw), (1, beta_bw)]:
-            beta_sq: np.ndarray = np.square(beta)
-            rho_beta: np.ndarray = np.sqrt(r0_sq * (1 + beta_sq) - beta_sq)
-            rhot_tanh: np.ndarray = np.tanh(np.arctanh(rho_beta) +
-                                            np.copysign(t - t0, s) / self._alpha)
-            r = self._alpha * \
-                np.sqrt((np.square(rhot_tanh) + beta_sq) / (1 + beta_sq))
-            delta_phi = (np.arctan(rhot_tanh / beta) -
-                         np.arctan(rho_beta / beta)) / Theta0
-            i_end: int = i_start + len(beta)
-            XY[i_start:i_end, 0] = r * Theta0 * np.cos(phi0 + delta_phi)
-            XY[i_start:i_end, 1] = r * Theta0 * np.sin(phi0 + delta_phi)
-            i_start = i_end
-        XY[-1, :] = XY[0, :]
+        Theta0: float = 1.0
+        # Computation of the ellipse in a x-y-coordinate system that is
+        # rotated by -phi0 so that the center of the ellipse is on the x-axis:
+        #   x_i: inner x-intercept
+        #   x_o: outer x-intercept
+        #   x_c: x-coordinate of the ellipse center
+        #   a: semi-minor (along x-axis)
+        #   b: semi-major (parallel to y-axis)
+        delta_t: float = np.abs(t - t0) / self._alpha
+        x_i: float = self._alpha * np.tanh(np.arctanh(r0) - delta_t)
+        x_o: float = self._alpha * np.tanh(np.arctanh(r0) + delta_t)
+        x_c: float = 0.5 * (x_o + x_i)
+        a: float = 0.5 * (x_o - x_i)
+        b: float = a
+        if r0 > 0.0 and a > 0.0:
+            # if actual ellipse then b is not a
+            delta_t_tanh: float = np.tanh(delta_t)
+            r_s: float = self._alpha * \
+                np.sqrt((1 - r0_sq) * delta_t_tanh**2 + r0_sq)
+            arg_s: float = np.arctan(
+                np.sqrt(1 - r0_sq) * delta_t_tanh / r0) / Theta0
+            b = np.sqrt((r_s * np.sin(arg_s))**2 /
+                        (1 - ((r_s * np.cos(arg_s) - x_c) / a)**2))
+        XY: np.ndarray = EllipseEdge(np.array([x_c, 0.0]), np.array([a, b]))
+        # Rotation of the ellipse to the angle phi0:
+        R: np.ndarray = np.array([[np.cos(phi0), -np.sin(phi0)],
+                                  [np.sin(phi0), np.cos(phi0)]])
+        XY = np.matmul(XY, R.T)
         return XY
 
 
@@ -619,7 +644,7 @@ class AntideSitterSpacetime(_dSSpacetime):
             x1_y: float = amp_y * math.cos(y[0] / self._alpha)
             x0_delta: float = x0_y - x0_x
             isCausal: bool = x0_delta**2 + (x1_y - x1_x)**2 >= \
-                sum(np.square(y[1:] - x[1:]))
+                sum(np.square(y[1:] - x[1:])) - causality_eps
             return ((x0_delta >= 0.0) and isCausal,
                     (x0_delta < 0.0) and isCausal)
         return isCausal_AdS
@@ -763,7 +788,9 @@ class BlackHoleSpacetime(Spacetime):
         raise NotImplementedError()
 
     def _XT_slice(self, t: float, origin: np.ndarray, xdim: int,
-                  samplesize: int = 32) -> np.ndarray:
+                  samplingsize: int = -1) -> np.ndarray:
+        if samplingsize <= 0:
+            samplingsize = default_samplingsize
         r_0: float = abs(origin[xdim])
         r_out: float = r_0
         r_in: float = r_0
@@ -786,42 +813,42 @@ class BlackHoleSpacetime(Spacetime):
                 XT[2, :] = [0.0, t]
                 XT[3, :] = [0.0, origin[0]]
             elif r_0 < self._r_S:  # inside the horizon
-                XT = np.zeros((2 * samplesize, 2))
+                XT = np.zeros((2 * samplingsize, 2))
                 if t > origin[0]:  # pointing inside
-                    X = np.linspace(r_0, 0.0, samplesize)
-                    XT[:samplesize, 0] = np.copysign(X, origin[xdim])
-                    XT[:samplesize, 1] = f_out(X)
+                    X = np.linspace(r_0, 0.0, samplingsize)
+                    XT[:samplingsize, 0] = np.copysign(X, origin[xdim])
+                    XT[:samplingsize, 1] = f_out(X)
                     X = np.flip(X)
-                    XT[-samplesize:, 0] = np.copysign(X, origin[xdim])
-                    XT[-samplesize:, 1] = f_in(X)
+                    XT[-samplingsize:, 0] = np.copysign(X, origin[xdim])
+                    XT[-samplingsize:, 1] = f_in(X)
                 else:  # pointing outside
                     r_out = Newton(f_in, fd_in, r_0, t, xmin=self._r_S)
-                    X = np.linspace(r_out, r_0, samplesize)
-                    XT[:samplesize, 0] = np.copysign(X, origin[xdim])
-                    XT[:samplesize, 1] = f_in(X)
+                    X = np.linspace(r_out, r_0, samplingsize)
+                    XT[:samplingsize, 0] = np.copysign(X, origin[xdim])
+                    XT[:samplingsize, 1] = f_in(X)
                     r_in = Newton(f_out, fd_out, r_0, t,
                                   xmin=0.0, xmax=self._r_S)
-                    X = np.linspace(r_0, r_in, samplesize)
-                    XT[-samplesize:, 0] = np.copysign(X, origin[xdim])
-                    XT[-samplesize:, 1] = f_out(X)
+                    X = np.linspace(r_0, r_in, samplingsize)
+                    XT[-samplingsize:, 0] = np.copysign(X, origin[xdim])
+                    XT[-samplingsize:, 1] = f_out(X)
             else:  # outside the horizon
-                XT = np.zeros((2 * samplesize, 2))
+                XT = np.zeros((2 * samplingsize, 2))
                 r_out = Newton(f_out, fd_out, r_0, t, xmin=self._r_S)
-                X = np.linspace(r_0, r_out, samplesize)
-                XT[:samplesize, 0] = np.copysign(X, origin[xdim])
-                XT[:samplesize, 1] = f_out(X)
+                X = np.linspace(r_0, r_out, samplingsize)
+                XT[:samplingsize, 0] = np.copysign(X, origin[xdim])
+                XT[:samplingsize, 1] = f_out(X)
                 r_in = Newton(f_in, fd_in, r_0, t, xmin=self._r_S)
-                X = np.linspace(r_in, r_0, samplesize)
-                XT[-samplesize:, 0] = np.copysign(X, origin[xdim])
-                XT[-samplesize:, 1] = f_in(X)
+                X = np.linspace(r_in, r_0, samplingsize)
+                XT[-samplingsize:, 0] = np.copysign(X, origin[xdim])
+                XT[-samplingsize:, 1] = f_in(X)
                 t_sing: float = f_in(0.0)
                 if (t_sing < t) and (origin[0] < t):
                     r_in = Newton(f_in, fd_in, self._r_S / 2.0, t,
                                   xmin=0.0, xmax=self._r_S)
-                    XT_inner: np.ndarray = np.zeros((samplesize + 1, 2))
-                    X = np.linspace(r_in, 0.0, samplesize)
-                    XT_inner[:samplesize, 0] = np.copysign(X, origin[xdim])
-                    XT_inner[:samplesize, 1] = f_in(X)
+                    XT_inner: np.ndarray = np.zeros((samplingsize + 1, 2))
+                    X = np.linspace(r_in, 0.0, samplingsize)
+                    XT_inner[:samplingsize, 0] = np.copysign(X, origin[xdim])
+                    XT_inner[:samplingsize, 1] = f_in(X)
                     XT_inner[-1, :] = [0.0, t]
                     XT = np.concatenate((XT, [[np.nan, np.nan]], XT_inner))
         else:  # Eddington-Finkelstein metric
@@ -836,14 +863,14 @@ class BlackHoleSpacetime(Spacetime):
                 fd_out = self._light_EF(origin[0], r_0, False, 1)
                 if r_0 < self._r_S:  # future -cone is limited
                     t = min(t, f_out(0.0))
-                XT = np.zeros((samplesize + n, 2))
+                XT = np.zeros((samplingsize + n, 2))
                 if r_0 < self._r_S:
                     r_out = Newton(f_out, fd_out, r_0, t,
                                    xmin=0.0, xmax=self._r_S)
                 else:
                     r_out = Newton(f_out, fd_out, 1.5 * self._r_S, t,
                                    xmin=self._r_S)
-                X = np.linspace(r_0, r_out, samplesize)
+                X = np.linspace(r_0, r_out, samplingsize)
                 XT[:-n, 0] = np.copysign(X, origin[xdim])
                 XT[:-n, 1] = f_out(X)
             if r_in < 0.0:

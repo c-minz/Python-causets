@@ -9,7 +9,8 @@ from __future__ import annotations
 import unittest
 import numpy as np
 from causets.spacetimes import Spacetime, deSitterSpacetime
-from matplotlib import pyplot as plt
+from causets.shapes import CoordinateShape, EllipseEdge
+from matplotlib import pyplot as plt, patches, axes
 
 
 class TestSpacetime(unittest.TestCase):
@@ -21,31 +22,21 @@ class TestSpacetime(unittest.TestCase):
         pass
 
     def test_ConePlotter(self):
-        spacetime: Spacetime = deSitterSpacetime(2, 1.5)
-        dims: List[int] = [1, 0]
-        plt.figure(figsize=(8.0, 8.0))
-        pr: float = 1.1
-        spacetime.DefaultShape().plot(dims, alpha=0.05)
+        # plot parameters:
+        a: float = 1.00
+        spacetime: Spacetime = deSitterSpacetime(3, a)
+        dims: List[int] = [1, 2]
+        pr: float = 1.1 * a
         plotting_params = {'facecolor': 'orange',
                            'alpha': 0.3, 'linewidth': 2.5}
-        startpoint: np.ndarray = np.array([-0.0, 0.9])
-        timesign: float = 1.0
-        timeslice: float = 1.4
-        plotconeat = spacetime.ConePlotter(plt.gca(), dims, plotting_params,
-                                           timesign, timeslice)
-        plotconeat(startpoint)
-        timesign: float = -1.0
-        timeslice: float = -0.9
-        plotconeat = spacetime.ConePlotter(plt.gca(), dims, plotting_params,
-                                           timesign, timeslice)
-        plotconeat(startpoint)
-        if len(dims) == 3:
-            plt.plot([startpoint[dims[0]]], [startpoint[dims[1]]],
-                     [startpoint[dims[2]]], 'ok')
-            plt.gca().set(xlim=[-pr, pr], ylim=[-pr, pr], zlim=[-pr, pr])
-        else:
-            plt.plot([startpoint[dims[0]]], [startpoint[dims[1]]], 'ok')
-            plt.gca().set(xlim=[-pr, pr], ylim=[-pr, pr])
+        # plot shape and cone:
+        plt.figure(figsize=(8.0, 8.0))
+        CoordinateShape(3, 'cylinder', radius=a).plot(dims, alpha=0.05)
+        startpoint: np.ndarray = np.array([0.0, 0.1 * a, -0.6 * a])
+        timeslice: float = 1.5
+        plotconeat = spacetime.ConePlotter(dims, plotting_params, 1.0)
+        plotconeat(startpoint, timeslice)
+        plt.gca().set(xlim=[-pr, pr], ylim=[-pr, pr])
         plt.show()
 
 

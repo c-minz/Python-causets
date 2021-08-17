@@ -11,7 +11,8 @@ import numpy as np
 from causets.causetevent import CausetEvent
 from causets.causet import Causet
 from causets.shapes import CoordinateShape
-from causets.spacetimes import Spacetime, FlatSpacetime
+from causets import spacetimes
+from causets.spacetimes import Spacetime
 
 
 class EmbeddedCauset(Causet):
@@ -22,71 +23,94 @@ class EmbeddedCauset(Causet):
     _shape: CoordinateShape
     _spacetime: Spacetime
 
+    @staticmethod
+    def __raiseDimValueError__(argument: str):
+        e: str = 'EmbeddedCauset: The dimension of `%s` is ' + \
+                 'not compatible with the other arguments.'
+        raise ValueError(e % argument)
+
     def __init__(self,
-                 dim: int = 2,
-                 spacetime: Spacetime = None,
+                 spacetime: [Spacetime, str] = None,
                  shape: Union[str, CoordinateShape] = None,
-                 coordinates: Union[Iterable[Iterable[float]],
-                                    np.ndarray] = None) -> None:
+                 coordinates: Union[List[List[float]],
+                                    List[np.ndarray],
+                                    np.ndarray] = None,
+                 dim: int = -1) -> None:
         '''
         Generates an embedded causal set in a spacetime subset of a specified 
         (coordinate) shape and with the events specified by `causet` and 
         `coordinates`.
 
         Optional arguments:
-        `dim`: int
-        Default dimension of the embedding spacetime. This parameter will be 
-        ignored if a spacetime object is specified or if a shape is specified 
-        as `CoordinateShape`. Default: 2
-        A `ValueError` is raised if this argument is less than 1.
-
-        `spacetime`: `Spacetime` object
+        `spacetime`: `Spacetime` object or name of spacetime
         A spacetime object (including parameters) that determines the 
-        causality. Default: `FlatSpacetime` of dimension `dim`.
+        causality, or name of spacetime to initialise with default 
+        parameters. Supported values for the name are 'flat', 'Minkowski', 
+        'dS', 'de Sitter', 'AdS', 'Anti-de Sitter', 'black hole'.
+        Default: `spacetimes.FlatSpacetime` of the determined dimension.
 
         `shape`: str or `CoordinateShape` object
-        (The name of) a coordinate shape object that ranges over the embedding 
-        region. If no shape is specified (default), the method 
-        `DefaultShape()` of the spacetime object is called. For the default 
-        spacetime `FlatSpacetime` the default shape is a unit diamond 
-        (Alexandrov subset).
-        A `ValueError` is raised if the specified shape has a different 
-        dimension than the spacetime.
+        (The name of) a coordinate shape that describes the embedding 
+        region of the events. 
+        Default: `DefaultShape()` of the spacetime object.
 
         `coordinates`: np.ndarray
-        Matrix with a row for each event's coordinates to be created in the 
-        embedding.
-        A `ValueError` is raised if the specified coordinates have a 
-        different dimension than the spacetime.
+        List of coordinates, a row of coordinates for event to be created.
+
+        `dim`: int
+        Dimension for the default spacetime.
+        Default: 2
+        A `ValueError` is raised if the dimensions of the arguments are not 
+        compatible.
         '''
-        super().__init__(set())
-        # initialise dimension and spacetime:
-        if isinstance(shape, CoordinateShape):
-            dim = shape.Dim
+        # initialise base class (Causet):
+        super().__init__()
+        # initialise dimension:
+        if dim <= 0:
+            dim = 2  # default
+            if (spacetime is not None) and isinstance(spacetime, Spacetime):
+                dim = spacetime.Dim
+            elif (shape is not None) and isinstance(shape, CoordinateShape):
+                dim = shape.Dim
+            elif coordinates is not None:
+                dim = len(coordinates[0])
+        # initialise spacetime:
+        M: Spacetime
         if spacetime is None:
-            if dim < 1:
-                raise ValueError('The dimension must be an integer ' +
-                                 'of at least 1.')
-            spacetime = FlatSpacetime(dim)
-        self._spacetime = spacetime
-        dim = spacetime.Dim
+            M = spacetimes.FlatSpacetime(dim)
+        elif isinstance(spacetime, str):
+            if spacetime in {'flat', 'Minkowski'}:
+                M = spacetimes.FlatSpacetime(dim)
+            elif spacetime in {'dS', 'de Sitter'}:
+                M = spacetimes.deSitterSpacetime(dim)
+            elif spacetime in {'AdS', 'Anti-de Sitter'}:
+                M = spacetimes.AntideSitterSpacetime(dim)
+            elif spacetime == 'black hole':
+                M = spacetimes.BlackHoleSpacetime(dim)
+            else:
+                raise ValueError(
+                    'The spacetime name "%s" is not supported.' % spacetime)
+        else:
+            M = spacetime
+        if M.Dim != dim:
+            self.__raiseDimValueError__('spacetime')
+        self._spacetime = M
+        defaultShape = M.DefaultShape()
         # initialise shape:
         if shape is None:
-            shape = spacetime.DefaultShape()
+            shape = defaultShape
         elif isinstance(shape, str):
             shape = CoordinateShape(dim, shape)
-        if shape.Dim != dim:
-            raise ValueError('The dimension of the specified coordinate ' +
-                             'shape is different from the dimension of the ' +
-                             'spacetime.')
+        if shape.Dim != defaultShape.Dim:
+            self.__raiseDimValueError__('shape')
         self._shape = shape
         # create new events:
         if coordinates is not None:
             # add labelled events with coordinates:
             if isinstance(coordinates, np.ndarray) and \
-                    ((coordinates.ndim != 2) or (coordinates.shape[1] != dim)):
-                raise ValueError('The dimension of the specified coordinates ' +
-                                 'is different from the embedding dimension.')
+                    ((coordinates.ndim != 2) or
+                     (coordinates.shape[1] != defaultShape.Dim)):
+                self.__raiseDimValueError__('coordinates')
             self.create(coordinates)
 
     @staticmethod
@@ -137,7 +161,7 @@ class EmbeddedCauset(Causet):
     @property
     def Dim(self) -> int:
         '''
-        Returns the CoordinateShape object of the embedding region.
+        Returns the coordinate dimension of the embedding region.
         '''
         return self.Shape.Dim
 
@@ -158,8 +182,8 @@ class EmbeddedCauset(Causet):
         return 0.0 if self.Card == 0 \
             else self.Density**(1.0 / self.Shape.Dim)
 
-    def create(self, coordinates: Union[Iterable[Iterable[float]],
-                                        Iterable[np.ndarray],
+    def create(self, coordinates: Union[List[List[float]],
+                                        List[np.ndarray],
                                         np.ndarray],
                labelFormat: str = None,
                relate: bool = True) -> Set[CausetEvent]:
@@ -184,7 +208,7 @@ class EmbeddedCauset(Causet):
     def relate(self, link: bool=True) -> None:
         '''
         Resets the causal relations between all events based on their 
-        embedding in the given spacetimes manifold.
+        embedding in the given spacetime manifold.
         '''
         _iscausal: Callable[[np.ndarray, np.ndarray],
                             Tuple[bool, bool]] = self._spacetime.Causality()

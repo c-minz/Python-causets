@@ -42,8 +42,8 @@ class SprinkledCauset(EmbeddedCauset):
         Sprinkling intensity parameter, the expected number of 
         sprinkled events.
         '''
-        # initialise shape and spacetime with super class:
-        super().__init__(dim, spacetime, shape)
+        # initialise base class (EmbeddedCauset):
+        super().__init__(spacetime=spacetime, shape=shape, dim=dim)
         # sprinkle:
         self._intensity = 0.0
         if card > 0:

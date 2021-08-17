@@ -19,7 +19,7 @@ class Causet(object):
 
     _events: Set[CausetEvent]
 
-    def __init__(self, eventSet: Set[CausetEvent]) -> None:
+    def __init__(self, eventSet: Set[CausetEvent] = set()) -> None:
         '''
         Generates a Causet class instance from a set of `CausetEvent`.
         The `CausetEvent` instances are not checked for logical consistency.
@@ -344,7 +344,8 @@ class Causet(object):
         return self.PastMatrix(labeledEvents, dtype).T
 
     def LinkPastMatrix(self,
-                       labelling: List[CausetEvent] = None) -> np.ndarray:
+                       labelling: List[CausetEvent] = None,
+                       dtype: Any = bool) -> np.ndarray:
         '''
         Returns the logical link past matrix such that `C[i, j]` is True if 
         the event with index j is linked in the past to event with index i. 
@@ -354,18 +355,19 @@ class Causet(object):
         if labelling is None:
             labelling = self.sortedByCausality()
         l: int = len(labelling)
-        C: np.ndarray = np.zeros((l, l), dtype=bool)
+        C: np.ndarray = np.zeros((l, l), dtype)
         for i, a in enumerate(labelling):
             for j, b in enumerate(labelling):
                 C[i, j] = a.isPastLink(b)
         return C
 
     def LinkFutureMatrix(self,
-                         labelling: List[CausetEvent] = None) -> np.ndarray:
+                         labelling: List[CausetEvent] = None,
+                         dtype: Any = bool) -> np.ndarray:
         '''
         Returns the transpose of `LinkPastMatrix`.
         '''
-        return self.FutureMatrix(labelling).T
+        return self.LinkPastMatrix(labelling, dtype).T
 
     def find(self, label: Any) -> CausetEvent:
         '''
@@ -377,9 +379,17 @@ class Causet(object):
                 return e
         raise ValueError(f'No event with label {label} found.')
 
+    def findAny(self, *labels: Iterable[Any]) -> Iterator[CausetEvent]:
+        '''
+        Returns an iterator of events labelled by any value in `labels`.
+        '''
+        for e in self._events:
+            if e.Label in labels:
+                yield e
+
     def findAll(self, *labels: Iterable[Any]) -> Set[CausetEvent]:
         '''
-        Returns a set of events with any of the given `labels`.
+        Returns a set of events labelled by any value in `labels`.
         '''
         return {e for e in self._events if e.Label in labels}
 
@@ -740,7 +750,7 @@ class Causet(object):
         newEventSet: Set[CausetEvent] = set()
         n: int
         if first <= 0:
-            _last = min(0, last)
+            _last: int = min(0, last)
             for a in Causet.PastOf(eventSet, includePresent=True):
                 setB: Set[CausetEvent] = a.Future & eventSet
                 if setB:
@@ -751,7 +761,7 @@ class Causet(object):
                 if (n >= first) and (n <= _last):
                     newEventSet.add(a)
         if last > 0:
-            _first = max(first, 0)
+            _first: int = max(first, 0)
             for b in Causet.FutureOf(eventSet, includePresent=True):
                 setA: Set[CausetEvent] = b.Past & eventSet
                 if setA:
@@ -807,7 +817,7 @@ class Causet(object):
             return set()
         newEventSet: Set[CausetEvent] = set()
         if first <= 0:
-            _last = min(0, last)
+            _last: int = min(0, last)
             for a in Causet.PastOf(eventSet, includePresent=True):
                 setB: Set[CausetEvent] = a.Future & eventSet
                 if setB:
@@ -817,7 +827,7 @@ class Causet(object):
                 if (n >= first) and (n <= _last):
                     newEventSet.add(a)
         if last > 0:
-            _first = max(first, 0)
+            _first: int = max(first, 0)
             for b in Causet.FutureOf(eventSet, includePresent=True):
                 setA: Set[CausetEvent] = b.Past & eventSet
                 if setA:

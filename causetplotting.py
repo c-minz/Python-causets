@@ -20,7 +20,7 @@ default_colors: Dict[str, str] = {'links':       'cs:blue',
                                   'linksface':   'cs:cyan',
                                   'eventsedge':  'cs:black',
                                   'eventsface':  'cs:core',
-                                  'conesedge':   'cs:orange',
+                                  'conesedge':   'cs:yellow',
                                   'conesface':   'cs:yellow'}
 
 
@@ -101,12 +101,12 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     Switch on the plotting of links with True (Default). A non-empty 
     dictionary will also show links. The parameters have to be supported by 
     matplotlib.lines.Line2D. The marker properties are only visible in dynamic 
-    plot mode (for which 'markevery' is set to 2 if links are partially 
+    plot mode (for which 'markevery' is set to [1] if links are partially 
     plotted).
     Default: 
     {'linewidth': 2.0,
      'linestyle': '-',
-     'markevery': 3,
+     'markevery': [],
      'color': default_colors['links'],
      'marker': 'o',
      'markersize': 5.0,
@@ -144,10 +144,10 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     by mpl_toolkits.mplot3d.art3d.Poly3DCollection (3D plots).
     Default 2D:
     {'edgecolor': default_colors['conesedge'], 
-     'facecolor': default_colors['conesface'], 
+     'facecolor': 'none', 
      'alpha': 0.1}
     Default 3D:
-    {'edgecolor': None, 
+    {'edgecolor': 'none', 
      'color': default_colors['conesface'], 
      'alpha': 0.1}
 
@@ -166,8 +166,14 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     Default: 0.0
     '''
     p: Dict[str, Any] = {}
+    # ====================
     # axis parameters:
     p['dims'] = kwargs.pop('dims', [1, 0])
+    d: int = len(p['dims'])
+    if (d < 2) or (d > 3):
+        raise ValueError(('%d-dimensional plot are not implemented. The '
+                          'argument `dims` for the plotting dimensions '
+                          'must have length 2 or 3.') % d)
     p['3d'] = len(p['dims']) > 2
     try:
         p['axislim'] = kwargs.pop('axislim')
@@ -191,6 +197,7 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
                 'xlim': shape.Limits(p['dims'][0]),
                 'ylim': shape.Limits(p['dims'][1])}})
     p['aspect'] = kwargs.pop('aspect', ['equal', 'box'])
+    # ====================
     # time slicing parameters:
     try:
         p['timeaxis'] = p['dims'].index(0)
@@ -203,14 +210,15 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
         p['timefade'] = kwargs.pop('timefade', 'linear')
     except KeyError:
         pass
+    # ====================
     # pastcones parameters:
     if p['3d']:
-        p_pcones = {'edgecolor': None,
+        p_pcones = {'edgecolor': 'none',
                     'color': default_colors['conesface'],
                     'alpha': 0.1}
     else:
         p_pcones = {'edgecolor': default_colors['conesedge'],
-                    'facecolor': default_colors['conesface'],
+                    'facecolor': 'none',
                     'alpha': 0.1}
     p_args: Any = kwargs.pop('pastcones', False)
     if isinstance(p_args, bool):
@@ -219,14 +227,15 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     else:
         p_pcones.update(p_args)
         p['pastcones'] = colors.convertColorsInDict(p_pcones)
+    # ====================
     # futurecones parameters:
     if p['3d']:
-        p_fcones = {'edgecolor': None,
+        p_fcones = {'edgecolor': 'none',
                     'color': default_colors['conesface'],
                     'alpha': 0.1}
     else:
         p_fcones = {'edgecolor': default_colors['conesedge'],
-                    'facecolor': default_colors['conesface'],
+                    'facecolor': 'none',
                     'alpha': 0.1}
     p_args = kwargs.pop('futurecones', False)
     if isinstance(p_args, bool):
@@ -235,10 +244,11 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     else:
         p_fcones.update(p_args)
         p['futurecones'] = colors.convertColorsInDict(p_fcones)
+    # ====================
     # links parameters:
     p_links = {'linewidth': 2.0,
                'linestyle': '-',
-               'markevery': 3,
+               'markevery': [],
                'color': default_colors['links'],
                'marker': 'o',
                'markersize': 5.0,
@@ -251,6 +261,7 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     else:
         p_links.update(p_args)
         p['links'] = colors.convertColorsInDict(p_links)
+    # ====================
     # events parameters:
     p_events = {'linewidth': 2.0,
                 'linestyle': '',
@@ -265,6 +276,7 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
     else:
         p_events.update(p_args)
         p['events'] = colors.convertColorsInDict(p_events)
+    # ====================
     # labels parameters:
     p_labels = {'verticalalignment': 'top',
                 'horizontalalignment': 'right'}
@@ -336,6 +348,12 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
     expected to have their `Coordinates` attribute set, for a plot of the 
     embedding.
     '''
+    # ====================
+    # get defaults and user-specified parameters:
+    plotting: Dict[str, Any] = plot_parameters(**kwargs)
+    _h = {}  # holds Dict of artists
+    # ====================
+    # get set of events:
     events: List[CausetEvent]
     if isinstance(E, EmbeddedCauset):
         events = list(E)
@@ -345,25 +363,26 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
         events = [E]
     else:
         events = E
-    eventCount = len(events)
-    plotting: Dict[str, Any] = plot_parameters(**kwargs)
-    is3d = plotting['3d']
-    dim: int = 3 if is3d else 2
+    eventCount: int = len(events)
+    linkCount: int = 0
     if 'links' in plotting:
         linkCount = CausetEvent.LinkCountOf(set(events))
+    # ====================
+    # set general parameters:
+    is3d = plotting['3d']
+    dim: int = 3 if is3d else 2
     _xy_z: List[int] = plotting['dims']
     _x: int = _xy_z[0]
     _y: int = _xy_z[1]
-    ax: plta.Axes
+    ax: plta.Axes = plotAxes
     if is3d:
         _z: int = _xy_z[2]
         if plotAxes is None:
             ax = plt.gca(projection='3d')
     elif plotAxes is None:
         ax = plt.gca(projection=None)
-    else:
-        ax = plotAxes
-    _h = {}
+    # ====================
+    # set spacetime and lightcone parameters:
     isPlottingPastcones: bool = 'pastcones' in plotting
     isPlottingFuturecones: bool = 'futurecones' in plotting
     plot_spacetime: Spacetime
@@ -374,7 +393,52 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
     else:
         plot_spacetime = spacetime
         coordattr = 'Coordinates'
+    if isPlottingPastcones:
+        pcn_alpha_max: float
+        if plotting['conetimefade'] != '':
+            try:
+                pcn_alpha_max = plotting['pastcones']['alpha']
+            except KeyError:
+                pcn_alpha_max = 1.0
+        plotpcone: Any = plot_spacetime.ConePlotter(
+            _xy_z, plotting['pastcones'], timesign=-1, axes=ax,
+            dynamicAlpha=dynamic_parameter(plotting['conetimefade'], dim,
+                                           abs(plotting['conetimedepth']),
+                                           pcn_alpha_max))
+    if isPlottingFuturecones:
+        fcn_alpha_max: float
+        if plotting['conetimefade'] != '':
+            try:
+                fcn_alpha_max = plotting['futurecones']['alpha']
+            except KeyError:
+                fcn_alpha_max = 1.0
+        plotfcone: Any = plot_spacetime.ConePlotter(
+            _xy_z, plotting['futurecones'], timesign=1, axes=ax,
+            dynamicAlpha=dynamic_parameter(plotting['conetimefade'], dim,
+                                           abs(plotting['conetimedepth']),
+                                           fcn_alpha_max))
+    # ====================
+    if 'timedepth' in plotting:
+        # ====================
+        # dynamic plots only
+        t_depth = plotting['timedepth']
+        plotting_links: Dict[str, Any] = {}
+        plotting_events: Dict[str, Any] = {}
+        plotting_labels: Dict[str, Any] = {}
+        if 'links' in plotting:
+            plotting_links = plotting['links']
+        if 'events' in plotting:
+            plotting_events = plotting['events']
+        if 'labels' in plotting:
+            plotting_labels = plotting['labels']
+        dyn_links = dynamic_parameter(plotting['timefade'],
+                                      dim, t_depth,
+                                      plotting_links['linewidth'])
+        dyn_events = dynamic_parameter(plotting['timefade'],
+                                       dim, t_depth,
+                                       plotting_events.get('alpha', 1.0))
 
+    # ====================
     def _timeslice(time: Union[float, List[float], np.ndarray]) -> \
             Dict[str, Any]:
         '''
@@ -382,84 +446,37 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
         pointers.
         '''
         if isinstance(time, float):
-            time = [time, time]
+            time = [time, time]  # list of floats required
+        # ====================
         # plot cones:
         if isPlottingPastcones or isPlottingFuturecones:
             temp_cone: Any
-            if isPlottingPastcones:
-                _hpcn: List[Any] = []
-                pcn_alpha_max: float
-                if plotting['conetimefade'] != '':
-                    try:
-                        pcn_alpha_max = plotting['pastcones']['alpha']
-                    except KeyError:
-                        pcn_alpha_max = 1.0
-                plotpcone: Any = plot_spacetime.ConePlotter(
-                    ax, _xy_z, plotting['pastcones'], -1, time[0],
-                    dynamic_parameter(plotting['conetimefade'], dim,
-                                      abs(plotting['conetimedepth']),
-                                      pcn_alpha_max))
-            if isPlottingFuturecones:
-                _hfcn: List[Any] = []
-                fcn_alpha_max: float
-                if plotting['conetimefade'] != '':
-                    try:
-                        fcn_alpha_max = plotting['pastcones']['alpha']
-                    except KeyError:
-                        fcn_alpha_max = 1.0
-                plotfcone: Any = plot_spacetime.ConePlotter(
-                    ax, _xy_z, plotting['futurecones'], 1, time[-1],
-                    dynamic_parameter(plotting['conetimefade'], dim,
-                                      abs(plotting['conetimedepth']),
-                                      fcn_alpha_max))
+            _hpcn: List[Any] = []
+            _hfcn: List[Any] = []
             for a in events:
                 c: np.ndarray = getattr(a, coordattr)
                 if isPlottingPastcones:
-                    temp_cone = plotpcone(c)
+                    temp_cone = plotpcone(c, time[0])
                     if temp_cone is not None:
                         _hpcn.append(temp_cone)
                 if isPlottingFuturecones:
-                    temp_cone = plotfcone(c)
+                    temp_cone = plotfcone(c, time[-1])
                     if temp_cone is not None:
                         _hfcn.append(temp_cone)
+        # ====================
         # plot links, events, labels:
         l: int = -1
         c_a: np.ndarray
-        if 'timedepth' in plotting:  # dynamic plots only
-            t_depth = plotting['timedepth']
-            if 'links' in plotting:
-                plotting_links: Dict[str, Any] = plotting['links']
-                _hlnk = [None] * linkCount
-            else:
-                plotting_links = {}
-            if 'events' in plotting:
-                plotting_events: Dict[str, Any] = plotting['events']
-                _hvnt = [None] * eventCount
-            else:
-                plotting_events = {}
-            if 'labels' in plotting:
-                plotting_labels: Dict[str, Any] = plotting['labels']
-                _hlbl = [None] * eventCount
-            else:
-                plotting_labels = {}
-            try:
-                dyn_links = dynamic_parameter(plotting['timefade'],
-                                              dim, t_depth,
-                                              plotting_links['alpha'])
-            except KeyError:
-                dyn_links = dynamic_parameter(plotting['timefade'],
-                                              dim, t_depth, 1)
-            try:
-                dyn_events = dynamic_parameter(plotting['timefade'],
-                                               dim, t_depth,
-                                               plotting_events['alpha'])
-            except KeyError:
-                dyn_events = dynamic_parameter(plotting['timefade'],
-                                               dim, t_depth, 1)
+        _hlnk = [None] * linkCount  # holds link artists
+        _hvnt = [None] * eventCount  # holds event artists
+        _hlbl = [None] * eventCount  # holds label artists
+        if 'timedepth' in plotting:
+            # ====================
+            # dynamic plots only
             for i, a in enumerate(events):
-                i_t_dist = getattr(a, coordattr)[0] - time[0]
+                c_a = getattr(a, coordattr)  # plot coordinates of a
+                i_t_dist = c_a[0] - time[0]  # distance from a to time
                 i_fade = dyn_events(i_t_dist)
-                c_a = getattr(a, coordattr)
                 if plotting_links:
                     for j in range(i + 1, eventCount):
                         b: CausetEvent = events[j]
@@ -468,24 +485,30 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
                         j_t_dist = getattr(b, coordattr)[0] - time[0]
                         j_fade = dyn_events(j_t_dist)
                         l += 1
+                        tau: float = 1.0
                         if (i_fade > 0) and (j_fade > 0):
                             if np.abs(i_t_dist) > np.abs(j_t_dist):
                                 i_in, i_out = j, i
+                                i_out_t_dist = i_t_dist
+                                linkAlpha = i_fade
                             else:
                                 i_in, i_out = i, j
-                            tau: float = 1.0
-                            m = 3
+                                i_out_t_dist = j_t_dist
+                                linkAlpha = j_fade
+                            m = []
                         elif ((i_fade > 0) or (j_fade > 0)) and \
                                 (np.sign(i_t_dist) != np.sign(j_t_dist)):
                             if t_depth * i_t_dist > 0:
                                 i_in, i_out = j, i
                                 i_out_t_dist = i_t_dist
+                                linkAlpha = i_fade
                             else:
                                 i_in, i_out = i, j
                                 i_out_t_dist = j_t_dist
+                                linkAlpha = j_fade
                             tau = np.abs(i_out_t_dist /
                                          (i_t_dist - j_t_dist))
-                            m = 2
+                            m = [1]
                         else:
                             continue
                         c_out: np.ndarray = \
@@ -494,7 +517,8 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
                             c_out + tau * getattr(events[i_in], coordattr)
                         linkWidth = dyn_links(i_out_t_dist)
                         if linkWidth > 0.0:
-                            plotting_links.update({'alpha': linkWidth,
+                            plotting_links.update({'alpha': linkAlpha,
+                                                   'linewidth': linkWidth,
                                                    'markevery': m})
                             if is3d:
                                 _hlnk[l] = ax.plot(
@@ -506,7 +530,6 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
                                 _hlnk[l] = ax.plot(
                                     [c_out[_x], linkTarget[_x]],
                                     [c_out[_y], linkTarget[_y]],
-                                    linewidth=linkWidth,
                                     **plotting_links)
                 if i_fade <= 0:
                     continue
@@ -527,9 +550,10 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
                         _hlbl[i] = ax.text(c_a[_x], c_a[_y],
                                            f' {a.Label} ',
                                            **plotting_labels)
-        else:  # static plots only
+        else:
+            # ====================
+            # static plots only
             if 'links' in plotting:
-                _hlnk = [None] * linkCount
                 for i, a in enumerate(events):
                     c_a = getattr(a, coordattr)
                     for j in range(i + 1, eventCount):
@@ -547,7 +571,6 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
                                                [c_a[_y], c_b[_y]],
                                                **plotting['links'])
             if 'events' in plotting:
-                _hvnt = [None] * eventCount
                 for i, a in enumerate(events):
                     c_a = getattr(a, coordattr)
                     if is3d:
@@ -558,7 +581,6 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
                         _hvnt[i] = ax.plot([c_a[_x]], [c_a[_y]],
                                            **plotting['events'])
             if 'labels' in plotting:
-                _hlbl = [None] * eventCount
                 for i, a in enumerate(events):
                     c_a = getattr(a, coordattr)
                     if is3d:
@@ -569,7 +591,8 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
                         _hlbl[i] = ax.text(c_a[_x], c_a[_y],
                                            f' {a.Label} ',
                                            **plotting['labels'])
-        # set axis parameters:
+        # ====================
+        # set axes properties:
         try:
             ax.set(xlim=plotting['axislim']['xlim'],
                    ylim=plotting['axislim']['ylim'])
@@ -579,7 +602,8 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
             pass
         if not is3d:
             ax.set_aspect(*plotting['aspect'])
-        # return pointers:
+        # ====================
+        # collect pointers in dictionary:
         if isPlottingPastcones:
             _h['pastcones'] = _hpcn
         if isPlottingFuturecones:
@@ -613,22 +637,22 @@ def plot(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
     return Plotter(E, plotAxes, spacetime, **kwargs)(time)
 
 
-def plotDiagram(events: List[CausetEvent], permutation: List[int] = [],
+def plotDiagram(E: List[CausetEvent], permutation: List[int] = [],
                 plotAxes: plta.Axes = None,
                 **kwargs) -> Dict[str, Any]:
     '''
-    Plots a Hasse diagram of `events` such that every event is placed at the 
+    Plots a Hasse diagram of `E` such that every event is placed at the 
     point specified by its `Position` attribute. If `permutation` is specified 
-    as an integer list with the same length as `events`, then the `Position` 
+    as an integer list with the same length as `E`, then the `Position` 
     attribute of the i-th element are set to the coordinates (i, permutation[i])
     for all i. 
     The plotting is executed by the `Plotter` routine.
     '''
-    if len(permutation) == len(events):
+    if len(permutation) == len(E):
         C: np.ndarray = EmbeddedCauset._Permutation_Coords(permutation, 1.0)
-        for i, e in enumerate(events):
+        for i, e in enumerate(E):
             e.Position = C[i, :]
-    H: Dict[str, Any] = plot(events, plotAxes, **kwargs)
+    H: Dict[str, Any] = plot(E, plotAxes, **kwargs)
     if plotAxes is None:
         plotAxes = plt.gca()
     plotAxes.set_axis_off()

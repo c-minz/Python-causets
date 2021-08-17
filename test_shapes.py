@@ -54,12 +54,12 @@ class TestCoordinateShape(unittest.TestCase):
         self.assertAlmostEqual(lim[1], 3.0 + 1.6 / 2, 5)
 
     def test_plot(self):
-        diamond = CoordinateShape(3, 'cylinder',
-                                  duration=4.5, radius=2.0, hollow=0.5,
-                                  center=[2.0, -2.0, 0.0])
+        S = CoordinateShape(3, 'cube', edge=3.0,
+                            duration=7.0, radius=3.5, hollow=0.3,
+                            center=[1.2, 1.0, 0.0])
         dims: List[int] = [1, 2, 0]
         plt.figure(figsize=(8.0, 8.0))
-        diamond.plot(dims, alpha=0.2, edgecolor='black')
+        S.plot(dims, alpha=0.1, edgecolor='gray')
         if len(dims) == 3:
             plt.gca().set(xlim=[-5.0, 5.0], ylim=[-5.0, 5.0], zlim=[-5.0, 5.0])
         else:
