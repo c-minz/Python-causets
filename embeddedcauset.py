@@ -46,7 +46,8 @@ class EmbeddedCauset(Causet):
         A spacetime object (including parameters) that determines the 
         causality, or name of spacetime to initialise with default 
         parameters. Supported values for the name are 'flat', 'Minkowski', 
-        'dS', 'de Sitter', 'AdS', 'Anti-de Sitter', 'black hole'.
+        'dS', 'de Sitter', 'AdS', 'Anti-de Sitter', 'black hole', 
+        'Schwarzschild'.
         Default: `spacetimes.FlatSpacetime` of the determined dimension.
 
         `shape`: str or `CoordinateShape` object
@@ -85,7 +86,7 @@ class EmbeddedCauset(Causet):
                 M = spacetimes.deSitterSpacetime(dim)
             elif spacetime in {'AdS', 'Anti-de Sitter'}:
                 M = spacetimes.AntideSitterSpacetime(dim)
-            elif spacetime == 'black hole':
+            elif spacetime == {'black hole', 'Schwarzschild'}:
                 M = spacetimes.BlackHoleSpacetime(dim)
             else:
                 raise ValueError(
@@ -127,8 +128,9 @@ class EmbeddedCauset(Causet):
             for i, p in enumerate(P):
                 crd_u: float = (p - 0.5) * cellscale
                 crd_v: float = (i + 0.5) * cellscale
-                coords[i, 0] = crd_u + crd_v - radius
-                coords[i, 1] = crd_u - crd_v
+                j: int = p - 1
+                coords[j, 0] = crd_u + crd_v - radius
+                coords[j, 1] = crd_u - crd_v
         return coords
 
     @staticmethod

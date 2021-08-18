@@ -51,15 +51,18 @@ class Causet(object):
         '''
         eventList: List[CausetEvent] = [CausetEvent()] * len(P)
         eLabel: Any
-        for i, p in enumerate(P):
+        for i in range(len(P)):
+            u: int = i + 1
+            v: int = P.index(u) + 1
             if labelFormat is None:
-                eLabel = i + 1
+                eLabel = u
             elif labelFormat == '':
                 eLabel = None
             else:
-                eLabel = labelFormat.format(i + 1)
+                eLabel = labelFormat.format(u)
             eventList[i] = CausetEvent(
-                past={eventList[j] for j in range(i) if P[j] < p},
+                past={eventList[j] for j in range(i)
+                      if P.index(j + 1) + 1 < v},
                 label=eLabel)
         return Causet(set(eventList))
 
@@ -80,7 +83,7 @@ class Causet(object):
 
         For the optional argument `labelFormat`, see `FromPermutation`.
         '''
-        return Causet.FromPermutation(list(range(n + 1, 1, -1)), labelFormat)
+        return Causet.FromPermutation(list(range(n, 0, -1)), labelFormat)
 
     @staticmethod
     def NewSimplex(d: int, includeCentralFace: bool = True) -> 'Causet':
