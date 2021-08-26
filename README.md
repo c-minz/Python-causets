@@ -14,7 +14,7 @@ A simple demonstration is provided by the file `demo.py` that generates a sprink
 ![Example plot for a sprinkle in de Sitter spacetime](demo.png)
 
 Using methods of `matplotlib`, it is also possible to generate animations, for example:
-[![Example animation for a 2-simplex in de Sitter spacetime]("de Sitter 2-simplex.png")](https://youtu.be/MHfqVEsMl9k)
+[![Example animation for a 2-simplex in de Sitter spacetime](demo_deSitter2simplex.png)](https://www.youtube.com/watch?v=MHfqVEsMl9k)
 
 # Past Development
 The original code was developed in MATLAB R2019a and R2020a as part of my PhD projects at the University of York (from 2017 to 2021). Most parts of the MATLAB source code are in separate repositories:
