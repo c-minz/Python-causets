@@ -86,7 +86,7 @@ class EmbeddedCauset(Causet):
                 M = spacetimes.deSitterSpacetime(dim)
             elif spacetime in {'AdS', 'Anti-de Sitter'}:
                 M = spacetimes.AntideSitterSpacetime(dim)
-            elif spacetime == {'black hole', 'Schwarzschild'}:
+            elif spacetime in {'black hole', 'Schwarzschild'}:
                 M = spacetimes.BlackHoleSpacetime(dim)
             else:
                 raise ValueError(
@@ -128,9 +128,8 @@ class EmbeddedCauset(Causet):
             for i, p in enumerate(P):
                 crd_u: float = (p - 0.5) * cellscale
                 crd_v: float = (i + 0.5) * cellscale
-                j: int = p - 1
-                coords[j, 0] = crd_u + crd_v - radius
-                coords[j, 1] = crd_u - crd_v
+                coords[i, 0] = crd_u + crd_v - radius
+                coords[i, 1] = crd_u - crd_v
         return coords
 
     @staticmethod
