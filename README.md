@@ -7,29 +7,29 @@ An instance of `Causet` (`causets.py`) is a set of `CausetEvent` (`events.py`) t
 
 The class `EmbeddedCauset` extends `Causet` and is able to handle the coordinates of events (their embedding) in a given region of a spacetime. Instances of this class can be plotted (including support for light-cone plotting). The subclass `SprinkledCauset` further adds the functionality to create a new causet or add more events to it via sprinkling a given spacetime region.
 
-# Examples and Testing
+# Examples and testing
 Most of the implemented code has been tested with the `unittest` module. All test modules are named as `test_...` and contain some principle examples. 
 
-A simple demonstration is provided by the file `demo.py` that generates a sprinkle in 3-dimensional de Sitter space, as shown by the following example plot:
+A simple demonstration is given in the file `demo.py`, which generates a sprinkle in 3-dimensional de Sitter space, for example, as shown by the following plot:
 ![Example plot for a sprinkle in de Sitter spacetime](demo.png)
 
-Using methods of `matplotlib`, it is also possible to generate animations, for example:
+Using methods of `matplotlib`, the causet plotting functions may also be used to create animations. For example, I created an animation of a 2-simplex embedded in de Sitter spacetime. The source code of this example is not included in this repository, but the animation is available at my YouTube channel: 
+
 [![Example animation for a 2-simplex in de Sitter spacetime](demo_deSitter2simplex.png)](https://www.youtube.com/watch?v=MHfqVEsMl9k)
 
-# Past Development
+# Progress of the source code development
 The original code was developed in MATLAB R2019a and R2020a as part of my PhD projects at the University of York (from 2017 to 2021). Most parts of the MATLAB source code are in separate repositories:
 * [Local structure of sprinkled causal sets, part 1/2 - 'diamondsprinkling'](https://github.com/c-minz/diamondsprinkling)
 * [Local structure of sprinkled causal sets, part 2/2 - 'diamondresults'](https://github.com/c-minz/diamondresults)
 * [MATLAB object classes and other - 'MATLAB-causets'](https://github.com/c-minz/MATLAB-causets)
 
-In order to make the code usable without a MATLAB license, I started to convert it to Python source code (Python 3.8.3) with mypy typing support.
+In order to make the code usable without a MATLAB license, I started to convert it to the Python modules (Python 3.8.3) with mypy typing support that are in this repository.
 
-The Python classes and functions are documented so that the help commands within Python give further information.
+The Python modules (classes and functions) are documented (use `help [class/function name]` in Python).
 
-# Future Development
-My development ideas include: 
+Further development ideas are:
 1. Visualization of generic causets as (Hasse) diagrams
-2. Methods for spacetime triangulation
+2. Methods for finding an embedding of a general causal set in a spacetime manifold, or a reconstruction of a spacetime manifold via some methods of triangulation
 
 If you wish to contribute to the project, please get in contact via email:
 christoph(dot)minz[at]gmail(dot)com
