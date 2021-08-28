@@ -147,11 +147,14 @@ class Spacetime(object):
         It is a list of 2 or 3 integers, setting up a 2D or 3D plot.
         '''
         is3d: bool = len(dims) == 3
+        _axes: plt_axes.Axes
         if axes is None:
             if is3d:
-                axes = plt.gca(projection='3d')
+                _axes = plt.gca(projection='3d')
             else:
-                axes = plt.gca(projection=None)
+                _axes = plt.gca(projection=None)
+        else:
+            _axes = axes
         timeaxis: int
         try:
             timeaxis = dims.index(0)
@@ -216,7 +219,7 @@ class Spacetime(object):
                         X, Y, Z = Z, X, Y
                     elif timeaxis == 1:
                         X, Y, Z = Y, Z, X
-                axes.plot_surface(X, Y, Z, **plotting_params)
+                _axes.plot_surface(X, Y, Z, **plotting_params)
                 return [(X, Y, Z)]
             else:
                 if timeaxis < 0:
@@ -231,7 +234,7 @@ class Spacetime(object):
                 if timeaxis == 0:
                     XY = np.fliplr(XY)
                 p: patches.Patch = patches.Polygon(XY, **plotting_params)
-                axes.add_patch(p)
+                _axes.add_patch(p)
                 return p
 
         return cone
@@ -345,11 +348,14 @@ class FlatSpacetime(Spacetime):
                      Union[patches.Patch,
                            List[Tuple[np.ndarray, np.ndarray, np.ndarray]]]]:
         is3d: bool = len(dims) == 3
+        _axes: plt_axes.Axes
         if axes is None:
             if is3d:
-                axes = plt.gca(projection='3d')
+                _axes = plt.gca(projection='3d')
             else:
-                axes = plt.gca(projection=None)
+                _axes = plt.gca(projection=None)
+        else:
+            _axes = axes
         timeaxis: int
         try:
             timeaxis = dims.index(0)
@@ -427,7 +433,7 @@ class FlatSpacetime(Spacetime):
                             origin - s, r, timesign * r,
                             timeaxis, samplingsize)
                 for XYZ in XYZ_list:
-                    axes.plot_surface(*XYZ, **plotting_params)
+                    _axes.plot_surface(*XYZ, **plotting_params)
                 return XYZ_list
             else:
                 XY: np.array = None
@@ -452,7 +458,7 @@ class FlatSpacetime(Spacetime):
                         else np.concatenate(
                             (XY, np.array([[np.nan, np.nan]]), XYpart))
                 p: patches.Patch = patches.Polygon(XY, **plotting_params)
-                axes.add_patch(p)
+                _axes.add_patch(p)
                 return p
 
         return cone

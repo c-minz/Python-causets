@@ -30,7 +30,7 @@ class EmbeddedCauset(Causet):
         raise ValueError(e % argument)
 
     def __init__(self,
-                 spacetime: [Spacetime, str] = None,
+                 spacetime: Union[Spacetime, str] = None,
                  shape: Union[str, CoordinateShape] = None,
                  coordinates: Union[List[List[float]],
                                     List[np.ndarray],
@@ -99,13 +99,16 @@ class EmbeddedCauset(Causet):
         self._spacetime = M
         defaultShape = M.DefaultShape()
         # initialise shape:
+        _shape: CoordinateShape
         if shape is None:
-            shape = defaultShape
+            _shape = defaultShape
         elif isinstance(shape, str):
-            shape = CoordinateShape(dim, shape)
-        if shape.Dim != defaultShape.Dim:
+            _shape = CoordinateShape(dim, shape)
+        else:
+            _shape = shape
+        if _shape.Dim != defaultShape.Dim:
             self.__raiseDimValueError__('shape')
-        self._shape = shape
+        self._shape = _shape
         # create new events:
         if coordinates is not None:
             # add labelled events with coordinates:
