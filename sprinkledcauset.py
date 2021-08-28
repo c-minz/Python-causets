@@ -25,13 +25,12 @@ class SprinkledCauset(EmbeddedCauset):
 
     def __init__(self,
                  card: int = 0, intensity: float = 0.0,
-                 dim: int = 2,
+                 dim: int = -1,
                  spacetime: Spacetime = None,
                  shape: Union[str, CoordinateShape] = None) -> None:
         '''
         Generates a sprinkled causal set by sprinkling in a 
-        spacetime subset with dimension `dim` of at least 1. 
-
+        spacetime subset. 
         The arguments `dim`, `shape` and `spacetime` are handled by the 
         super class `EmbeddedCauset` before events are sprinkled.
 

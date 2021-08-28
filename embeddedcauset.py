@@ -68,13 +68,14 @@ class EmbeddedCauset(Causet):
         super().__init__()
         # initialise dimension:
         if dim <= 0:
-            dim = 2  # default
             if (spacetime is not None) and isinstance(spacetime, Spacetime):
                 dim = spacetime.Dim
             elif (shape is not None) and isinstance(shape, CoordinateShape):
                 dim = shape.Dim
             elif coordinates is not None:
                 dim = len(coordinates[0])
+            else:
+                dim = 2  # default
         # initialise spacetime:
         M: Spacetime
         if spacetime is None:

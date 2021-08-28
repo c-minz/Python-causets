@@ -6,9 +6,11 @@ Created on 9 Oct 2020
 @license: BSD 3-Clause
 '''
 from __future__ import annotations
+from typing import List, Tuple
 from causets.sprinkledcauset import SprinkledCauset
 from causets.spacetimes import deSitterSpacetime
 from causets.shapes import CoordinateShape
+from causets.causetevent import CausetEvent
 from matplotlib import pyplot as plt
 import causets.causetplotting as cplt
 
@@ -40,7 +42,7 @@ cplt.plot(e, dims=dims, spacetime=C.Spacetime,
           pastcones={'alpha': 1.0},
           futurecones={'alpha': 1.0},
           time=timeslices)
-ax: axes.Axes = plt.gca()
+ax: plt.Axes = plt.gca()
 ax.set_xlabel('space' if dims[0] > 0 else 'time')
 ax.set_ylabel('space' if dims[1] > 0 else 'time')
 if len(dims) > 2:
