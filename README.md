@@ -34,7 +34,7 @@ Further development ideas are:
 If you wish to contribute to the project, please get in contact via email:
 christoph(dot)minz[at]gmail(dot)com
 
-# License Information
+# License information
 The source code is published under the BSD 3-Clause License, see [license file](LICENSE.md).
 
 Copyright (c) 2020-2021, Christoph Minz

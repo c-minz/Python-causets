@@ -113,6 +113,9 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
      'markeredgecolor': default_colors['linksedge'],
      'markerfacecolor': default_colors['linksface']}
 
+    'linkgapsize': float
+    Default: 0.0
+
     'events': bool, Dict[str, Any]
     Switch on the plotting of events with True (Default). A non-empty 
     dictionary will also show events. The parameters have to be supported by 
@@ -212,6 +215,7 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
         pass
     # ====================
     # pastcones parameters:
+    p_pcones: Dict[str, Any]
     if p['3d']:
         p_pcones = {'edgecolor': 'none',
                     'color': default_colors['conesface'],
@@ -229,6 +233,7 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
         p['pastcones'] = colors.convertColorsInDict(p_pcones)
     # ====================
     # futurecones parameters:
+    p_fcones: Dict[str, Any]
     if p['3d']:
         p_fcones = {'edgecolor': 'none',
                     'color': default_colors['conesface'],
@@ -246,29 +251,36 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
         p['futurecones'] = colors.convertColorsInDict(p_fcones)
     # ====================
     # links parameters:
-    p_links = {'linewidth': 2.0,
-               'linestyle': '-',
-               'markevery': [],
-               'color': default_colors['links'],
-               'marker': 'o',
-               'markersize': 5.0,
-               'markeredgecolor': default_colors['linksedge'],
-               'markerfacecolor': default_colors['linksface']}
+    p_links: Dict[str, Any] = {'linewidth': 2.0,
+                               'linestyle': '-',
+                               'markevery': [],
+                               'color': default_colors['links'],
+                               'marker': 'o',
+                               'markersize': 5.0,
+                               'markeredgecolor': default_colors['linksedge'],
+                               'markerfacecolor': default_colors['linksface']}
+    p_linkgapsize: float = kwargs.pop('linkgapsize', 0.0)
+    p['linkgaps'] = (p_linkgapsize > 0.0)
+    if p['linkgaps']:
+        p_links.update({'markeredgecolor': [0.0, 0.0, 0.0, 0.0],
+                        'markerfacecolor': [0.0, 0.0, 0.0, 0.0]})
     p_args = kwargs.pop('links', True)
     if isinstance(p_args, bool):
         if p_args:
             p['links'] = colors.convertColorsInDict(p_links)
     else:
         p_links.update(p_args)
+        if p['linkgaps']:
+            p_links.update({'markersize': p_linkgapsize})
         p['links'] = colors.convertColorsInDict(p_links)
     # ====================
     # events parameters:
-    p_events = {'linewidth': 2.0,
-                'linestyle': '',
-                'marker': 'o',
-                'markersize': 7.0,
-                'markeredgecolor': default_colors['eventsedge'],
-                'markerfacecolor': default_colors['eventsface']}
+    p_events: Dict[str, Any] = {'linewidth': 2.0,
+                                'linestyle': '',
+                                'marker': 'o',
+                                'markersize': 7.0,
+                                'markeredgecolor': default_colors['eventsedge'],
+                                'markerfacecolor': default_colors['eventsface']}
     p_args = kwargs.pop('events', True)
     if isinstance(p_args, bool):
         if p_args:
@@ -278,8 +290,8 @@ def plot_parameters(**kwargs) -> Dict[str, Any]:
         p['events'] = colors.convertColorsInDict(p_events)
     # ====================
     # labels parameters:
-    p_labels = {'verticalalignment': 'top',
-                'horizontalalignment': 'right'}
+    p_labels: Dict[str, Any] = {'verticalalignment': 'top',
+                                'horizontalalignment': 'right'}
     p_args = kwargs.pop('labels', True)
     if isinstance(p_args, bool):
         if p_args:
@@ -418,15 +430,15 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
                                            abs(plotting['conetimedepth']),
                                            fcn_alpha_max))
     # ====================
+    plotting_links: Dict[str, Any] = {}
+    if 'links' in plotting:
+        plotting_links = plotting['links']
     if 'timedepth' in plotting:
         # ====================
         # dynamic plots only
         t_depth = plotting['timedepth']
-        plotting_links: Dict[str, Any] = {}
         plotting_events: Dict[str, Any] = {}
         plotting_labels: Dict[str, Any] = {}
-        if 'links' in plotting:
-            plotting_links = plotting['links']
         if 'events' in plotting:
             plotting_events = plotting['events']
         if 'labels' in plotting:
@@ -553,7 +565,8 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
         else:
             # ====================
             # static plots only
-            if 'links' in plotting:
+            if plotting_links:
+                eps: float = 0.0000001
                 for i, a in enumerate(events):
                     c_a = getattr(a, coordattr)
                     for j in range(i + 1, eventCount):
@@ -561,15 +574,75 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
                         if not a.isLinkedTo(events[j]):
                             continue
                         l += 1
+                        X: List[float] = [c_a[_x]]
+                        Y: List[float] = [c_a[_y]]
+                        area: float
                         if is3d:
-                            _hlnk[l] = ax.plot([c_a[_x], c_b[_x]],
-                                               [c_a[_y], c_b[_y]],
-                                               [c_a[_z], c_b[_z]],
-                                               **plotting['links'])
+                            Z: List[float] = [c_a[_z]]
+                            if 'linkgaps' in plotting:
+                                for e in events:
+                                    if e is a or e is events[j]:
+                                        continue
+                                    c_e: np.ndarray = getattr(e, coordattr)
+                                    if (c_a[_x] <= c_e[_x] <= c_b[_x] or
+                                            c_a[_x] >= c_e[_x] >= c_b[_x]) and \
+                                       (c_a[_y] <= c_e[_y] <= c_b[_y] or
+                                            c_a[_y] >= c_e[_y] >= c_b[_y]) and \
+                                       (c_a[_z] <= c_e[_z] <= c_b[_z] or
+                                            c_a[_z] >= c_e[_z] >= c_b[_z]):
+                                        d_ae: List[float] = [c_e[_x] - c_a[_x],
+                                                             c_e[_y] - c_a[_y],
+                                                             c_e[_z] - c_a[_z]]
+                                        d_eb: List[float] = [c_b[_x] - c_e[_x],
+                                                             c_b[_y] - c_e[_y],
+                                                             c_b[_z] - c_e[_z]]
+                                        area = np.sqrt((d_ae[1] * d_eb[2] -
+                                                        d_ae[2] * d_eb[1])**2 +
+                                                       (d_ae[2] * d_eb[0] -
+                                                        d_ae[0] * d_eb[2])**2 +
+                                                       (d_ae[0] * d_eb[1] -
+                                                        d_ae[1] * d_eb[0])**2)
+                                        if area < eps:
+                                            X.append(c_e[_x])
+                                            Y.append(c_e[_y])
+                                            Z.append(c_e[_z])
+                                X.append(c_b[_x])
+                                Y.append(c_b[_y])
+                                Z.append(c_b[_z])
+                                if len(X) > 3:
+                                    I: np.ndarray = np.lexsort((X, Y, Z))
+                                    X = [X[i] for i in I]
+                                    Y = [Y[i] for i in I]
+                                    Z = [Z[i] for i in I]
+                                plotting_links.update(
+                                    {'markevery': list(range(1, len(X) - 1))})
+                            _hlnk[l] = ax.plot(X, Y, Z, **plotting_links)
                         else:
-                            _hlnk[l] = ax.plot([c_a[_x], c_b[_x]],
-                                               [c_a[_y], c_b[_y]],
-                                               **plotting['links'])
+                            if 'linkgaps' in plotting:
+                                for e in events:
+                                    if e is a or e is events[j]:
+                                        continue
+                                    c_e: np.ndarray = getattr(e, coordattr)
+                                    if (c_a[_x] <= c_e[_x] <= c_b[_x] or
+                                            c_a[_x] >= c_e[_x] >= c_b[_x]) and \
+                                       (c_a[_y] <= c_e[_y] <= c_b[_y] or
+                                            c_a[_y] >= c_e[_y] >= c_b[_y]):
+                                        area = np.abs((c_e[_x] - c_a[_x]) *
+                                                      (c_b[_y] - c_e[_y]) -
+                                                      (c_e[_y] - c_a[_y]) *
+                                                      (c_b[_x] - c_e[_x]))
+                                        if area < eps:
+                                            X.append(c_e[_x])
+                                            Y.append(c_e[_y])
+                                X.append(c_b[_x])
+                                Y.append(c_b[_y])
+                                if len(X) > 3:
+                                    I: np.ndarray = np.lexsort((X, Y))
+                                    X = [X[i] for i in I]
+                                    Y = [Y[i] for i in I]
+                                plotting_links.update(
+                                    {'markevery': list(range(1, len(X) - 1))})
+                            _hlnk[l] = ax.plot(X, Y, **plotting_links)
             if 'events' in plotting:
                 for i, a in enumerate(events):
                     c_a = getattr(a, coordattr)
