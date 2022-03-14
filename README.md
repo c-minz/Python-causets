@@ -8,7 +8,7 @@ An instance of `Causet` (`causet.py`) is a set of `CausetEvent` (`causetevent.py
 The class `EmbeddedCauset` extends `Causet` and is able to handle the coordinates of events (their embedding) in a given region of a spacetime. Instances of this class can be plotted (including light-cones where implemented). The subclass `SprinkledCauset` further adds the functionality to create a new causet or add more events to it via sprinkling the spacetime region.
 
 # Examples and testing
-Most of the implemented code has been tested in `unittest` modules, named `test_...`. Some of these modules also contain some examples. 
+Most of the implemented code has been tested in `unittest` modules, named `test_...`. Some of these modules also contain causet examples. 
 
 A simple demonstration is given in the file `demo.py`, which generates a sprinkle in 3-dimensional de Sitter space, for example, as shown by the following plot:
 ![Example plot for a sprinkle in de Sitter spacetime](demo.png)
@@ -37,4 +37,4 @@ christoph(dot)minz[at]gmail(dot)com
 # License information
 The source code is published under the BSD 3-Clause License, see [license file](LICENSE.md).
 
-Copyright (c) 2020-2021, Christoph Minz
+Copyright (c) 2020-2022, Christoph Minz
