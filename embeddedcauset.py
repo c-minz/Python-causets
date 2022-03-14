@@ -129,10 +129,11 @@ class EmbeddedCauset(Causet):
         if count > 0:
             cellscale: float = radius / float(count)
             for i, p in enumerate(P):
+                j: int = p - 1
                 crd_u: float = (p - 0.5) * cellscale
                 crd_v: float = (i + 0.5) * cellscale
-                coords[i, 0] = crd_u + crd_v - radius
-                coords[i, 1] = crd_u - crd_v
+                coords[j, 0] = crd_u + crd_v - radius
+                coords[j, 1] = crd_u - crd_v
         return coords
 
     @staticmethod
@@ -222,7 +223,8 @@ class EmbeddedCauset(Causet):
         for i, a in enumerate(eventList):
             for j in range(i + 1, eventList_len):
                 b = eventList[j]
-                isAB, isBA = _iscausal(a.Coordinates, b.Coordinates)
+                isAB, isBA = _iscausal(np.array(a.Coordinates),
+                                       np.array(b.Coordinates))
                 if isAB:  # A in the past of B:
                     a._succ.add(b)
                     b._prec.add(a)

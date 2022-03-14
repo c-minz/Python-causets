@@ -11,7 +11,6 @@ from causets.embeddedcauset import EmbeddedCauset  # @UnresolvedImport
 from causets.sprinkledcauset import SprinkledCauset  # @UnresolvedImport
 from causets.spacetimes import BlackHoleSpacetime  # @UnresolvedImport
 from causets.shapes import CoordinateShape  # @UnresolvedImport
-from matplotlib import pyplot as plt
 import causets.causetplotting as cplt  # @UnresolvedImport
 
 
@@ -19,7 +18,7 @@ class TestCausetplotting(unittest.TestCase):
 
     def setUp(self):
         cplt.setDefaultColors('UniYork')
-        plt.figure(figsize=(8.0, 8.0))
+        cplt.figure(figsize=(8.0, 8.0))
 
     def tearDown(self):
         pass
@@ -34,12 +33,12 @@ class TestCausetplotting(unittest.TestCase):
                          pastcones={'facecolor': 'none', 'alpha': 0.8},
                          futurecones={'facecolor': 'none', 'alpha': 0.8})
         P([0.7])
-        ax = plt.gca()
+        ax = cplt.gca()
         if len(dims) > 2:
             ax.xaxis.pane.fill = False
             ax.yaxis.pane.fill = False
             ax.zaxis.pane.fill = False
-        plt.show()
+        cplt.show()
 
     def test_plotSprinkle(self):
         C: SprinkledCauset = SprinkledCauset(card=200,
@@ -61,7 +60,7 @@ class TestCausetplotting(unittest.TestCase):
                                'linewidth': 2.0},
                   time=[-1.0, 1.0])
         C.Shape.plot(dims)
-        plt.show()
+        cplt.show()
 
 
 if __name__ == '__main__':

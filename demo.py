@@ -11,7 +11,6 @@ from causets.sprinkledcauset import SprinkledCauset  # @UnresolvedImport
 from causets.spacetimes import deSitterSpacetime  # @UnresolvedImport
 from causets.shapes import CoordinateShape  # @UnresolvedImport
 from causets.causetevent import CausetEvent  # @UnresolvedImport @UnusedImport
-from matplotlib import pyplot as plt
 import causets.causetplotting as cplt  # @UnresolvedImport
 
 # Create a sprinkle from de Sitter spacetime with cosmological horizon at
@@ -26,11 +25,10 @@ e: CausetEvent = C.CentralAntichain().pop()  # pick one event
 cplt.setDefaultColors('UniYork')  # using University of York brand colours
 dims: List[int] = [1, 2, 0]  # choose the (order of) plot dimensions
 if len(dims) > 2:
-    plt.figure(figsize=(8.0, 8.0))
+    cplt.figure(figsize=(8.0, 8.0))
 S.plot(dims)  # plot the embedding shape
 # Add causet plots and show result:
-cplt.plot(C, dims=dims,
-          events={'alpha': 0.05},
+cplt.plot(C, dims=dims, events={'alpha': 0.05},
           links={'alpha': 0.1, 'linewidth': 0.5}, labels=False)
 cplt.plot(list(e.Cone), dims=dims, spacetime=C.Spacetime,
           events={'markerfacecolor': 'cs:darkblue'},
@@ -39,13 +37,12 @@ cplt.plot(list(e.Cone), dims=dims, spacetime=C.Spacetime,
 timeslices: Tuple[float, float] = S.Limits(0)
 cplt.plot(e, dims=dims, spacetime=C.Spacetime,
           events={'markerfacecolor': 'cs:red'},
-          pastcones={'alpha': 1.0},
-          futurecones={'alpha': 1.0},
+          pastcones={'alpha': 1.0}, futurecones={'alpha': 1.0},
           time=timeslices)
-ax: plt.Axes = plt.gca()
+ax: cplt.Axes = cplt.gca()
 ax.set_xlabel('space' if dims[0] > 0 else 'time')
 ax.set_ylabel('space' if dims[1] > 0 else 'time')
 if len(dims) > 2:
     ax.set_zlabel('space' if dims[2] > 0 else 'time')
     ax.grid(False)
-plt.show()
+cplt.show()

@@ -10,10 +10,13 @@ from typing import List, Dict, Any, Callable, Union, Optional
 from causets.causetevent import CausetEvent  # @UnresolvedImport
 from causets.embeddedcauset import EmbeddedCauset  # @UnresolvedImport
 import numpy as np
-from matplotlib import pyplot as plt, axes as plta
 import causets.colorschemes as colors  # @UnresolvedImport
 from causets.spacetimes import Spacetime, FlatSpacetime  # @UnresolvedImport
 from causets.shapes import CoordinateShape  # @UnresolvedImport @UnusedImport
+from matplotlib import patches  # @UnusedImport
+from matplotlib.pyplot import figure, gca, show  # @UnusedImport
+from matplotlib.axes import Axes  # @UnusedImport
+from matplotlib.patches import Patch  # @UnusedImport
 
 default_colors: Dict[str, str] = {'links':       'cs:blue',
                                   'linksedge':   'cs:blue',
@@ -321,7 +324,7 @@ def dynamic_parameter(function: str, dim: int, timedepth: float,
 
 
 def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
-            plotAxes: Optional[plta.Axes] = None,
+            plotAxes: Optional[Axes] = None,
             spacetime: Optional[Spacetime] = None, **kwargs) -> \
         Callable[[Union[float, List[float], np.ndarray]], Dict[str, Any]]:
     '''
@@ -371,13 +374,13 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
     _xy_z: List[int] = plotting['dims']
     _x: int = _xy_z[0]
     _y: int = _xy_z[1]
-    ax: plta.Axes = plotAxes
+    ax: Axes = plotAxes
     if is3d:
         _z: int = _xy_z[2]
         if plotAxes is None:
-            ax = plt.gca(projection='3d')
+            ax = gca(projection='3d')
     elif plotAxes is None:
-        ax = plt.gca(projection=None)
+        ax = gca(projection=None)
     # ====================
     # set spacetime and lightcone parameters:
     isPlottingPastcones: bool = 'pastcones' in plotting
@@ -451,7 +454,7 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
             _hpcn: List[Any] = []
             _hfcn: List[Any] = []
             for a in events:
-                c: np.ndarray = getattr(a, coordattr)
+                c: np.ndarray = np.array(getattr(a, coordattr))
                 if isPlottingPastcones:
                     temp_cone = plotpcone(c, time[0])
                     if temp_cone is not None:
@@ -471,7 +474,7 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
             # ====================
             # dynamic plots only
             for i, a in enumerate(events):
-                c_a = getattr(a, coordattr)  # plot coordinates of a
+                c_a = np.array(getattr(a, coordattr))  # plot coordinates of a
                 i_t_dist = c_a[0] - time[0]  # distance from a to time
                 i_fade = dyn_events(i_t_dist)
                 if plotting_links:
@@ -479,7 +482,7 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
                         b: CausetEvent = events[j]
                         if not a.isLinkedTo(b):
                             continue
-                        j_t_dist = getattr(b, coordattr)[0] - time[0]
+                        j_t_dist = np.array(getattr(b, coordattr))[0] - time[0]
                         j_fade = dyn_events(j_t_dist)
                         l += 1
                         tau: float = 1.0
@@ -509,9 +512,9 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
                         else:
                             continue
                         c_out: np.ndarray = \
-                            getattr(events[i_out], coordattr)
-                        linkTarget = (1 - tau) * \
-                            c_out + tau * getattr(events[i_in], coordattr)
+                            np.array(getattr(events[i_out], coordattr))
+                        linkTarget = (1 - tau) * c_out \
+                            + tau * np.array(getattr(events[i_in], coordattr))
                         linkWidth = dyn_links(i_out_t_dist)
                         if linkWidth > 0.0:
                             plotting_links.update({'alpha': linkAlpha,
@@ -553,11 +556,12 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
             if plotting_links:
                 eps: float = 0.0000001
                 for i, a in enumerate(events):
-                    c_a = getattr(a, coordattr)
+                    c_a = np.array(getattr(a, coordattr))
                     for j in range(i + 1, eventCount):
                         I: np.ndarray
                         c_e: np.ndarray
-                        c_b: np.ndarray = getattr(events[j], coordattr)
+                        c_b: np.ndarray = \
+                            np.array(getattr(events[j], coordattr))
                         if not a.isLinkedTo(events[j]):
                             continue
                         l += 1
@@ -570,7 +574,7 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
                                 for e in events:
                                     if e is a or e is events[j]:
                                         continue
-                                    c_e = getattr(e, coordattr)
+                                    c_e = np.array(getattr(e, coordattr))
                                     if (c_a[_x] <= c_e[_x] <= c_b[_x] or
                                             c_a[_x] >= c_e[_x] >= c_b[_x]) and \
                                        (c_a[_y] <= c_e[_y] <= c_b[_y] or
@@ -609,7 +613,7 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
                                 for e in events:
                                     if e is a or e is events[j]:
                                         continue
-                                    c_e = getattr(e, coordattr)
+                                    c_e = np.array(getattr(e, coordattr))
                                     if (c_a[_x] <= c_e[_x] <= c_b[_x] or
                                             c_a[_x] >= c_e[_x] >= c_b[_x]) and \
                                        (c_a[_y] <= c_e[_y] <= c_b[_y] or
@@ -632,7 +636,7 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
                             _hlnk[l] = ax.plot(X, Y, **plotting_links)
             if 'events' in plotting:
                 for i, a in enumerate(events):
-                    c_a = getattr(a, coordattr)
+                    c_a = np.array(getattr(a, coordattr))
                     if is3d:
                         _hvnt[i] = ax.plot([c_a[_x]], [c_a[_y]],
                                            [c_a[_z]],
@@ -642,7 +646,7 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
                                            **plotting['events'])
             if 'labels' in plotting:
                 for i, a in enumerate(events):
-                    c_a = getattr(a, coordattr)
+                    c_a = np.array(getattr(a, coordattr))
                     if is3d:
                         _hlbl[i] = ax.text(c_a[_x], c_a[_y], c_a[_z],
                                            f' {a.Label} ',
@@ -680,7 +684,7 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
 
 
 def plot(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
-         plotAxes: Optional[plta.Axes] = None,
+         plotAxes: Optional[Axes] = None,
          spacetime: Optional[Spacetime] = None, **kwargs) -> Dict[str, Any]:
     '''
     Generates a plotting function with `Plotter` and passes the `time` keyword 
@@ -698,7 +702,7 @@ def plot(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
 
 
 def plotDiagram(E: List[CausetEvent], permutation: List[int] = [],
-                plotAxes: Optional[plta.Axes] = None, **kwargs) -> \
+                plotAxes: Optional[Axes] = None, **kwargs) -> \
         Dict[str, Any]:
     '''
     Plots a Hasse diagram of `E` such that every event is placed at the 
@@ -714,6 +718,6 @@ def plotDiagram(E: List[CausetEvent], permutation: List[int] = [],
             e.Position = C[i, :]
     H: Dict[str, Any] = plot(E, plotAxes, **kwargs)
     if plotAxes is None:
-        plotAxes = plt.gca()
+        plotAxes = gca()
     plotAxes.set_axis_off()
     return H

@@ -6,10 +6,13 @@ Created on 1 Oct 2020
 @license: BSD 3-Clause
 '''
 from __future__ import annotations
-from typing import List, Dict, Tuple, Any, Union
+from typing import List, Dict, Tuple, Any, Union, Optional
 import math
 import numpy as np
-from matplotlib import pyplot as plt, patches, axes as plt_axes
+from matplotlib import patches
+from matplotlib.pyplot import gca
+from matplotlib.axes import Axes
+from matplotlib.patches import Patch
 
 default_samplingsize: int = 128  # default number of edges for curved objects
 
@@ -245,14 +248,14 @@ class CoordinateShape(object):
         shift: float = self._center[dim]
         return (-l + shift, l + shift)
 
-    def plot(self, dims: List[int], axes: plt_axes.Axes = None,
-             **kwargs) -> Union[patches.Patch,
+    def plot(self, dims: List[int], plotAxes: Optional[Axes] = None,
+             **kwargs) -> Union[Patch,
                                 List[Tuple[np.ndarray, np.ndarray, np.ndarray]]]:
         '''
         Plots a cut through the center of the shape showing `dims` that 
         can be a list of 2 integers (for a 2D plot) or 3 integers (for a 3D 
-        plot). The argument `axes` specifies the plot axes object to be used 
-        (by default the current axes of `matplotlib`). 
+        plot). The argument `plotAxes` specifies the plot axes object to be 
+        used (by default the current axes of `matplotlib`). 
         As optional keyword arguments, the plotting options can be specified 
         that will overwrite the defaults that are for 2D:
         {'edgecolor': 'black', 'facecolor': 'black', 'alpha': 0.05}
@@ -264,11 +267,9 @@ class CoordinateShape(object):
         returned for a 3D plot.
         '''
         is3d: bool = len(dims) == 3
-        if axes is None:
-            if is3d:
-                axes = plt.gca(projection='3d')
-            else:
-                axes = plt.gca(projection=None)
+        if plotAxes is None:
+            plotAxes = gca(projection='3d') if is3d else \
+                gca(projection=None)
         if is3d:
             plotoptions = {'edgecolor': None,
                            'color': 'black',
@@ -323,50 +324,51 @@ class CoordinateShape(object):
                 S = CuboidSurface(self.Center[dims],
                                   self._params['edges'][dims])
             for XYZ in S:
-                axes.plot_surface(*XYZ, **plotoptions)
+                plotAxes.plot_surface(*XYZ, **plotoptions)
             return S
         else:
-            p: patches.Patch
+            p: Patch
             a: float
             b: float
             if self.Name == 'cube':
                 a = self._params['edge']
-                p = patches.Rectangle(self.Center[dims] -
-                                      0.5 * np.array([a, a]),
-                                      width=a, height=a, **plotoptions)
+                p = patches.Rectangle(
+                    self.Center[dims] - 0.5 * np.array([a, a]), width=a,
+                    height=a, **plotoptions)
             elif self.Name == 'ball' or \
                     ((timeaxis < 0) and (self.Name in {'bicone', 'cylinder'})):
                 if hollow == 0.0:
-                    p = patches.Circle(self.Center[dims],
-                                       self._params['radius'], **plotoptions)
+                    p = patches.Circle(
+                        self.Center[dims], self._params['radius'],
+                        **plotoptions)
                 else:
-                    p = patches.Polygon(CircleEdge(self.Center[dims],
-                                                   self._params['radius'],
-                                                   hollow),
-                                        **plotoptions)
+                    p = patches.Polygon(
+                        CircleEdge(self.Center[dims], self._params['radius'],
+                                   hollow),
+                        **plotoptions)
             elif self.Name == 'cylinder':
-                cyl: np.ndarray = CylinderCutEdge(self.Center[dims],
-                                                  self._params['radius'],
-                                                  self._params['duration'],
-                                                  hollow)
+                cyl: np.ndarray = CylinderCutEdge(
+                    self.Center[dims], self._params['radius'],
+                    self._params['duration'], hollow)
                 if timeaxis == 0:
                     cyl = cyl[:, [1, 0]]
                 p = patches.Polygon(cyl, **plotoptions)
             elif self.Name == 'bicone':
-                p = patches.Polygon(BiconeEdge(self.Center[dims],
-                                               self._params['radius'], hollow),
-                                    **plotoptions)
+                p = patches.Polygon(
+                    BiconeEdge(self.Center[dims], self._params['radius'],
+                               hollow),
+                    **plotoptions)
             else:  # cuboid
                 edges: np.ndarray = self._params['edges'][dims]
-                p = patches.Rectangle(self.Center[dims] - 0.5 * edges,
-                                      width=edges[0], height=edges[1],
-                                      **plotoptions)
-            axes.add_patch(p)
+                p = patches.Rectangle(
+                    self.Center[dims] - 0.5 * edges, width=edges[0],
+                    height=edges[1], **plotoptions)
+            plotAxes.add_patch(p)
             return p
 
 
-def RectangleEdge(left: float, bottom: float, width: float,
-                  height: float) -> np.ndarray:
+def RectangleEdge(left: float, bottom: float, width: float, height: float) -> \
+        np.ndarray:
     '''
     Returns a matrix of size 5 x 2 that describes the edge of a rectangle.
     '''
@@ -377,8 +379,8 @@ def RectangleEdge(left: float, bottom: float, width: float,
                      [left, bottom]])
 
 
-def CircleEdge(center: np.ndarray, radius: float,
-               hollow: float = 0.0, samplingsize: int = -1) -> np.ndarray:
+def CircleEdge(center: np.ndarray, radius: float, hollow: float = 0.0,
+               samplingsize: int = -1) -> np.ndarray:
     '''
     Returns a matrix of size m x 2 that describes the edge of a circle.
     If the circle is hollow, `m = 2 * samplingsize + 3`, else it is 
@@ -402,8 +404,8 @@ def CircleEdge(center: np.ndarray, radius: float,
     return edge
 
 
-def EllipseEdge(center: np.ndarray, radii: np.ndarray,
-                hollow: float = 0.0, samplingsize: int = -1) -> np.ndarray:
+def EllipseEdge(center: np.ndarray, radii: np.ndarray, hollow: float = 0.0,
+                samplingsize: int = -1) -> np.ndarray:
     '''
     Returns a matrix of size m x 2 that describes the edge of an ellipse.
     If the ellipse is hollow, `m = 2 * samplingsize + 3`, else it is 
@@ -427,8 +429,8 @@ def EllipseEdge(center: np.ndarray, radii: np.ndarray,
     return edge
 
 
-def BiconeEdge(center: np.ndarray, radius: float,
-               hollow: float = 0.0) -> np.ndarray:
+def BiconeEdge(center: np.ndarray, radius: float, hollow: float = 0.0) -> \
+        np.ndarray:
     '''
     Returns a matrix of size m x 2 that describes the edge of a 2D bicone.
     If the bicone is hollow, `m = 11`, else it is `5`.
@@ -511,8 +513,7 @@ def CubeSurface(center: np.ndarray, edge: float) -> \
     return CuboidSurface(center, np.array([edge, edge, edge]))
 
 
-def BallSurface(center: np.ndarray, radius: float,
-                samplingsize: int = -1) -> \
+def BallSurface(center: np.ndarray, radius: float, samplingsize: int = -1) -> \
         List[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     '''
     Returns the XYZ data that describes a ball surface.

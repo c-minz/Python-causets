@@ -11,7 +11,6 @@ from causets.embeddedcauset import CoordinateShape  # @UnresolvedImport
 from causets.embeddedcauset import EmbeddedCauset  # @UnresolvedImport
 from causets.test_causet import CausetTestCase  # @UnresolvedImport
 import causets.causetplotting as cplt  # @UnresolvedImport
-from matplotlib import pyplot as plt
 
 
 class TestEmbeddedCauset(CausetTestCase):
@@ -31,8 +30,10 @@ class TestEmbeddedCauset(CausetTestCase):
     def test_FromPermutation(self):
         C: EmbeddedCauset = EmbeddedCauset.FromPermutation(
             [3, 2, 5, 1, 8, 6, 7, 4])
-        self.assertEqual(C.isPath(C.findAll(2, 3, 6, 7)), True)
-        self.assertEqual(C.isPath(C.findAll(2, 5, 6, 7)), False)
+        cplt.plot(C, dims=[1, 0], spacetime=C.Spacetime, labels=True)
+        cplt.show()
+        self.assertEqual(C.isPath(C.findAll(2, 3, 6, 7)), False)
+        self.assertEqual(C.isPath(C.findAll(2, 5, 6, 7)), True)
         C: EmbeddedCauset = EmbeddedCauset.FromPermutation(
             [4, 3, 2, 1, 8, 7, 6, 5])
         self.assertCauset(C, 8, False, False)
@@ -44,7 +45,7 @@ class TestEmbeddedCauset(CausetTestCase):
              3, 11, 23, 39, 7, 19, 35, 51, 15, 31, 47, 59, 27, 43, 55, 63,
              4, 12, 24, 40, 8, 20, 36, 52, 16, 32, 48, 60, 28, 44, 56, 64])
         cplt.plot(C, dims=[1, 0], spacetime=C.Spacetime, labels=True)
-        plt.show()
+        cplt.show()
 
 
 if __name__ == '__main__':
