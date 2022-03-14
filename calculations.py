@@ -15,8 +15,8 @@ import numpy as np
 def HarmonicNumber(n: int, approximate: int = 100) -> float:
     '''
     Returns the floating point value of the n-th harmonic number. 
-    For `n` greater or equal to `approximate`, the value is approximated by 
-    the asymptotic expansion.
+    For `n` greater or equal to `approximate`, the value is approximated by the 
+    asymptotic expansion.
     '''
     if n < approximate:
         return sum(1. / k for k in range(n, 0, -1))
@@ -32,7 +32,7 @@ def HarmonicNumber(n: int, approximate: int = 100) -> float:
 def HarmonicNumbers(n: int, approximate: int = 100) -> np.ndarray:
     '''
     Returns a vector of floating point values for all harmonic numbers from 0 
-    to n.  
+    to `n`.  
     For `n` greater than `approximate`, the value is approximated by the 
     asymptotic expansion.
     '''
@@ -63,7 +63,7 @@ def HarmonicNumberFraction(n: int) -> Fraction:
 def HarmonicNumberFractions(n: int) -> List[Fraction]:
     '''
     Returns a vector of exact rational numbers for all harmonic numbers from 
-    0 to n.  
+    0 to `n`.  
     '''
     H: List[Fraction] = [Fraction()] * (n + 1)
     total: Fraction = Fraction(0, 1)
@@ -73,16 +73,16 @@ def HarmonicNumberFractions(n: int) -> List[Fraction]:
     return H
 
 
-def NewtonsMethod(f: Callable[[Any], Any],
-                  fprime: Callable[[Any], Any], x0: float,
-                  y: float = 0.0, xmin: float = np.NINF, xmax: float = np.PINF,
-                  default: float = 0.0, precission: float = 1.0e-6,
-                  maxIterations: int = 50) -> float:
+def NewtonsMethod(f: Callable[[Any], Any], fprime: Callable[[Any], Any],
+                  x0: float, y: float = 0.0, xmin: float = np.NINF,
+                  xmax: float = np.PINF, default: float = 0.0,
+                  precission: float = 1.0e-6, maxIterations: int = 50) -> \
+        float:
     '''
     Uses Newton's method to find the x value at which the function `f` (with 
     its derivative `fprime`) reaches the value y with a given `precission` and 
-    maximal number of iterations `maxIterations`. At each iteration, the 
-    result will be restricted to the interval 
+    maximal number of iterations `maxIterations`. At each iteration, the result 
+    will be restricted to the interval 
     [`xmin` + `precission`, `xmax` - `precission`]
     If the method does not converge, `default` is returned.
     '''

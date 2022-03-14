@@ -6,14 +6,14 @@ Created on 22 Jul 2020
 @license: BSD 3-Clause
 '''
 from __future__ import annotations
-from typing import List, Dict, Any, Callable, Union
-from causets.causetevent import CausetEvent
-from causets.embeddedcauset import EmbeddedCauset
+from typing import List, Dict, Any, Callable, Union, Optional
+from causets.causetevent import CausetEvent  # @UnresolvedImport
+from causets.embeddedcauset import EmbeddedCauset  # @UnresolvedImport
 import numpy as np
 from matplotlib import pyplot as plt, axes as plta
-import causets.colorschemes as colors
-from causets.spacetimes import Spacetime, FlatSpacetime
-from causets.shapes import CoordinateShape
+import causets.colorschemes as colors  # @UnresolvedImport
+from causets.spacetimes import Spacetime, FlatSpacetime  # @UnresolvedImport
+from causets.shapes import CoordinateShape  # @UnresolvedImport @UnusedImport
 
 default_colors: Dict[str, str] = {'links':       'cs:blue',
                                   'linksedge':   'cs:blue',
@@ -28,13 +28,8 @@ def setDefaultColors(schemeName: str = 'matplotlib', **kwargs) -> None:
     '''
     Sets the scheme of the default colors for all plots to `schemeName`. 
     As optional keyword arguments the following colors can be set:
-    links       (default 'cs:blue')
-    linksedge   (default 'cs:blue')
-    linksface   (default 'cs:cyan')
-    eventsedge  (default 'cs:black')
-    eventsface  (default 'cs:core')
-    conesedge   (default 'cs:orange')
-    conesface   (default 'cs:yellow')
+    links, linksedge, linksface, eventsedge, eventsface, conesedge, conesface
+    (defaults see `default_colors`)
     '''
     global default_colors
     colors.setGlobalColorScheme(schemeName)
@@ -43,130 +38,120 @@ def setDefaultColors(schemeName: str = 'matplotlib', **kwargs) -> None:
 
 def plot_parameters(**kwargs) -> Dict[str, Any]:
     '''
-    Pre-sets the default plot parameters and overwrites them with any of 
-    the user-defined values. For a full set of possible plot properties, 
-    consult the matplotlib documentation for the respective plot objects.
-    The `colorschemes` module adds support for local color schemes of 
-    research institutes. To use colors of a scheme, precede the color by 
-    'cs:', for example 'cs:blue' for the blue defined in the respective 
-    color scheme.
+    Pre-sets the default plot parameters and overwrites them with any of the 
+    user-defined values. For a full set of possible plot properties, consult 
+    the matplotlib documentation for the respective plot objects. The 
+    `colorschemes` module adds support for local color schemes of research 
+    institutes. To use colors of a scheme, precede the color by 'cs:', for 
+    example 'cs:blue' for the blue defined in the respective color scheme.
 
-    >> General plot parameters:
-    'dims': List[int]
-    List of 2 or 3 integers that set the coordinate dimensions along the 
-    x- and y- (and z-)axis of the plot. The plot will be either in 2D or 3D.
-    Default: [1, 0] (first space dimension along the x-axis, time dimension 
-    along the y-axis)
+    General plot parameters
+    -----------------------
+    dims: List[int]
+        List of 2 or 3 integers that set the coordinate dimensions along the x- 
+        and y- (and z-)axis of the plot. The plot will be either in 2D or 3D. 
+        Default: [1, 0] (first space dimension along the x-axis, time dimension 
+        along the y-axis)
+    axislim: Dict[str, Tuple(float, float)]
+        Axis limits of the plot ranges with the keys 'xlim', 'ylim' (and 
+        'zlim'). Each entry is a tuple of the minimal and maximal value. Use 
+        'shape' to automatically set the limits to the bounds of the shape 
+        specified by the keyword argument 'shape', which is automatically set 
+        to the embedding shape when plotting an `EmbeddedCauset` object.
+        Default: -unset- (axis limits are not set by the plotting function)
+    aspect: List[str]
+        Aspect settings for a 2D plot. 
+        (Note: Aspect settings for 3D are not yet supported by matplotlib. For 
+        3D, use equal axis lengths - see 'axislim' - and set the window to 
+        equal width and height.)
+        Default: ['equal', 'box']
 
-    'axislim': Dict[str, Tuple(float, float)]
-    Axis limits of the plot ranges with the keys 'xlim', 'ylim' (and 'zlim').
-    Each entry is a tuple of the minimal and maximal value. Use 'shape' to 
-    automatically set the limits to the bounds of the shape specified by the 
-    keyword argument 'shape', which is automatically set to the embedding 
-    shape when plotting an `EmbeddedCauset` object.
-    Default: -unset- (axis limits are not set by the plotting function)
+    Plot parameters for time slicing
+    --------------------------------
+    time: float, List[float]
+        Either a single or two time parameters. The first time parameter is 
+        slices the past cones, the last time parameter slices the future cones.
+        Default: 0.0 (all cones are sliced at time 0.0)
+    timedepth: float
+        This parameter switches to the dynamic plot mode such that objects are 
+        only visible within this time depth. For positive values, objects to 
+        the future of the first 'time' value are visible; for negative values, 
+        objects to the past of the first 'time' value are visible.
+        Default: -unset- (no dynamic plot mode)
+    timefade: str
+        Specifies the time fading type in dynamic plot mode. Implemented values 
+        are 'linear' (scales linearly to 0.0 at 'timedepth'), 'exponential' 
+        (scales exponentially with half-time 'timedepth'), 'intensity' (shows a 
+        spacetime dimension depending intensity scaling of a constant power).
+        Default: 'linear'
 
-    'aspect': List[str]
-    Aspect settings for a 2D plot. 
-    (Note: Aspect settings for 3D are not yet supported by matplotlib. For 
-    3D, use equal axis lengths - see 'axislim' - and set the window to equal 
-    width and height.)
-    Default: ['equal', 'box']
+    Plot parameters for links, events, labels
+    -----------------------------------------
+    links: bool, Dict[str, Any]
+        Switch on the plotting of links with True (Default). A non-empty 
+        dictionary will also show links. The parameters have to be supported by 
+        matplotlib.lines.Line2D. The marker properties are only visible in 
+        dynamic plot mode (for which 'markevery' is set to [1] if links are 
+        partially plotted).
+        Default: 
+        {'linewidth': 2.0,
+         'linestyle': '-',
+         'markevery': [],
+         'color': default_colors['links'],
+         'marker': 'o',
+         'markersize': 5.0,
+         'markeredgecolor': default_colors['linksedge'],
+         'markerfacecolor': default_colors['linksface']}
+    linkgapsize: float
+        Default: 0.0
+    events: bool, Dict[str, Any]
+        Switch on the plotting of events with True (Default). A non-empty 
+        dictionary will also show events. The parameters have to be supported 
+        by matplotlib.lines.Line2D.
+        Default:
+        {'linewidth': 2.0,
+         'linestyle': '',
+         'marker': 'o',
+         'markersize': 7.0,
+         'markeredgecolor': default_colors['eventsedge'],
+         'markerfacecolor': default_colors['eventsface']}
+    labels: bool, Dict[str, Any]
+        Switch on the plotting of events labels with True (Default). A 
+        non-empty dictionary will also show labels. The parameters have to be 
+        supported by matplotlib.text.
+        Default:
+        {'verticalalignment': 'top',
+         'horizontalalignment': 'right'}
 
-
-    >> Plot parameters for time slicing:
-    'time': float, List[float]
-    Either a single or two time parameters. The first time parameter is 
-    slices the past cones, the last time parameter slices the future 
-    cones.
-    Default: 0.0 (all cones are sliced at time 0.0)
-
-    'timedepth': float
-    This parameter switches to the dynamic plot mode such that objects are 
-    only visible within this time depth. For positive values, objects to the 
-    future of the first 'time' value are visible; for negative values, objects 
-    to the past of the first 'time' value are visible.
-    Default: -unset- (no dynamic plot mode)
-
-    'timefade': str
-    Specifies the time fading type in dynamic plot mode. Implemented values 
-    are 'linear' (scales linearly to 0.0 at 'timedepth'), 'exponential' 
-    (scales exponentially with half-time 'timedepth'), 'intensity' (shows a 
-    spacetime dimension depending intensity scaling of a constant power).
-    Default: 'linear'
-
-
-    >> Plot parameters for links, events, labels:
-    'links': bool, Dict[str, Any]
-    Switch on the plotting of links with True (Default). A non-empty 
-    dictionary will also show links. The parameters have to be supported by 
-    matplotlib.lines.Line2D. The marker properties are only visible in dynamic 
-    plot mode (for which 'markevery' is set to [1] if links are partially 
-    plotted).
-    Default: 
-    {'linewidth': 2.0,
-     'linestyle': '-',
-     'markevery': [],
-     'color': default_colors['links'],
-     'marker': 'o',
-     'markersize': 5.0,
-     'markeredgecolor': default_colors['linksedge'],
-     'markerfacecolor': default_colors['linksface']}
-
-    'linkgapsize': float
-    Default: 0.0
-
-    'events': bool, Dict[str, Any]
-    Switch on the plotting of events with True (Default). A non-empty 
-    dictionary will also show events. The parameters have to be supported by 
-    matplotlib.lines.Line2D.
-    Default:
-    {'linewidth': 2.0,
-     'linestyle': '',
-     'marker': 'o',
-     'markersize': 7.0,
-     'markeredgecolor': default_colors['eventsedge'],
-     'markerfacecolor': default_colors['eventsface']}
-
-    'labels': bool, Dict[str, Any]
-    Switch on the plotting of events labels with True (Default). A non-empty 
-    dictionary will also show labels. The parameters have to be supported by 
-    matplotlib.text.
-    Default:
-    {'verticalalignment': 'top',
-     'horizontalalignment': 'right'}
-
-
-    >> Plot parameters for causal cones:
-    'pastcones': bool, Dict[str, Any]
-    'futurecones': bool, Dict[str, Any]
-    Switch on the plotting of past or future causal cones with True (Default: 
-    False - causal cones are omitted). A non-empty dictionary with keyword 
-    parameters will also switch on the causal cones. The parameters have to be 
-    supported by matplotlib.patches.Patch (2D plots) or 
-    by mpl_toolkits.mplot3d.art3d.Poly3DCollection (3D plots).
-    Default 2D:
-    {'edgecolor': default_colors['conesedge'], 
-     'facecolor': 'none', 
-     'alpha': 0.1}
-    Default 3D:
-    {'edgecolor': 'none', 
-     'color': default_colors['conesface'], 
-     'alpha': 0.1}
-
-    'conetimefade': str
-    Specifies the time fading type for the 'alpha' of the causal cones, which 
-    is independent of the dynamic plot mode. The 'alpha' value is used as 
-    maximum.
-    Additionally to the options of 'timefade', the empty string '' switches 
-    off the fading of causal cones.
-    Default: 'intensity'
-
-    'conetimedepth': float
-    Similar to the 'timedepth' parameter, this parameter determines the time 
-    depth, only now for plotting causal cones. Again, this parameter is 
-    independent of the dynamic plot mode.
-    Default: 0.0
+    Plot parameters for causal cones
+    --------------------------------
+    pastcones: bool, Dict[str, Any]
+    futurecones: bool, Dict[str, Any]
+        Switch on the plotting of past or future causal cones with True 
+        (Default: False - causal cones are omitted). A non-empty dictionary 
+        with keyword parameters will also switch on the causal cones. The 
+        parameters have to be supported by matplotlib.patches.Patch (2D plots) 
+        or by mpl_toolkits.mplot3d.art3d.Poly3DCollection (3D plots).
+        Default 2D:
+        {'edgecolor': default_colors['conesedge'], 
+         'facecolor': 'none', 
+         'alpha': 0.1}
+        Default 3D:
+        {'edgecolor': 'none', 
+         'color': default_colors['conesface'], 
+         'alpha': 0.1}
+    conetimefade: str
+        Specifies the time fading type for the 'alpha' of the causal cones, 
+        which is independent of the dynamic plot mode. The 'alpha' value is 
+        used as maximum.
+        Additionally to the options of 'timefade', the empty string '' switches 
+        off the fading of causal cones.
+        Default: 'intensity'
+    conetimedepth: float
+        Similar to the 'timedepth' parameter, this parameter determines the 
+        time depth, only now for plotting causal cones. Again, this parameter 
+        is independent of the dynamic plot mode.
+        Default: 0.0
     '''
     p: Dict[str, Any] = {}
     # ====================
@@ -336,9 +321,9 @@ def dynamic_parameter(function: str, dim: int, timedepth: float,
 
 
 def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
-            plotAxes: plta.Axes = None, spacetime: Spacetime = None,
-            **kwargs) -> Callable[[Union[float, List[float], np.ndarray]],
-                                  Dict[str, Any]]:
+            plotAxes: Optional[plta.Axes] = None,
+            spacetime: Optional[Spacetime] = None, **kwargs) -> \
+        Callable[[Union[float, List[float], np.ndarray]], Dict[str, Any]]:
     '''
     Returns a function handle to a plotting function that accepts the single 
     input `time`, which has to be a list or np.ndarray of one or two float 
@@ -352,9 +337,9 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
 
     `E` is either a instance or a list of `CausetEvent` to be plotted in that 
     order or an `EmbeddedCauset` object.  
-    `spacetime` is the spacetime for which the events and causal structure 
-    is plotted. This parameter is automatically set if E is an embedded causet.
-    If `None` (default), then the events are expected to have a `Position` 
+    `spacetime` is the spacetime for which the events and causal structure is 
+    plotted. This parameter is automatically set if E is an embedded causet. If 
+    `None` (default), then the events are expected to have a `Position` 
     attribute so that a Hasse diagram can be plotted. 
     If a spacetime is specified (by E or explicitly), then the events are 
     expected to have their `Coordinates` attribute set, for a plot of the 
@@ -570,6 +555,8 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
                 for i, a in enumerate(events):
                     c_a = getattr(a, coordattr)
                     for j in range(i + 1, eventCount):
+                        I: np.ndarray
+                        c_e: np.ndarray
                         c_b: np.ndarray = getattr(events[j], coordattr)
                         if not a.isLinkedTo(events[j]):
                             continue
@@ -583,7 +570,7 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
                                 for e in events:
                                     if e is a or e is events[j]:
                                         continue
-                                    c_e: np.ndarray = getattr(e, coordattr)
+                                    c_e = getattr(e, coordattr)
                                     if (c_a[_x] <= c_e[_x] <= c_b[_x] or
                                             c_a[_x] >= c_e[_x] >= c_b[_x]) and \
                                        (c_a[_y] <= c_e[_y] <= c_b[_y] or
@@ -610,7 +597,7 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
                                 Y.append(c_b[_y])
                                 Z.append(c_b[_z])
                                 if len(X) > 3:
-                                    I: np.ndarray = np.lexsort((X, Y, Z))
+                                    I = np.lexsort((X, Y, Z))
                                     X = [X[i] for i in I]
                                     Y = [Y[i] for i in I]
                                     Z = [Z[i] for i in I]
@@ -622,7 +609,7 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
                                 for e in events:
                                     if e is a or e is events[j]:
                                         continue
-                                    c_e: np.ndarray = getattr(e, coordattr)
+                                    c_e = getattr(e, coordattr)
                                     if (c_a[_x] <= c_e[_x] <= c_b[_x] or
                                             c_a[_x] >= c_e[_x] >= c_b[_x]) and \
                                        (c_a[_y] <= c_e[_y] <= c_b[_y] or
@@ -637,7 +624,7 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
                                 X.append(c_b[_x])
                                 Y.append(c_b[_y])
                                 if len(X) > 3:
-                                    I: np.ndarray = np.lexsort((X, Y))
+                                    I = np.lexsort((X, Y))
                                     X = [X[i] for i in I]
                                     Y = [Y[i] for i in I]
                                 plotting_links.update(
@@ -693,8 +680,8 @@ def Plotter(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
 
 
 def plot(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
-         plotAxes: plta.Axes = None, spacetime: Spacetime = None,
-         **kwargs) -> Dict[str, Any]:
+         plotAxes: Optional[plta.Axes] = None,
+         spacetime: Optional[Spacetime] = None, **kwargs) -> Dict[str, Any]:
     '''
     Generates a plotting function with `Plotter` and passes the `time` keyword 
     argument to the plotting function, the dictionary of plot handles is 
@@ -711,8 +698,8 @@ def plot(E: Union[CausetEvent, List[CausetEvent], EmbeddedCauset],
 
 
 def plotDiagram(E: List[CausetEvent], permutation: List[int] = [],
-                plotAxes: plta.Axes = None,
-                **kwargs) -> Dict[str, Any]:
+                plotAxes: Optional[plta.Axes] = None, **kwargs) -> \
+        Dict[str, Any]:
     '''
     Plots a Hasse diagram of `E` such that every event is placed at the 
     point specified by its `Position` attribute. If `permutation` is specified 

@@ -6,15 +6,16 @@ Created on 02 Oct 2020
 @license: BSD 3-Clause
 '''
 from __future__ import annotations
-from typing import Callable, Tuple, List, Dict, Any, Union
+from typing import Callable, Tuple, List, Dict, Any, Union, Optional
 import numpy as np
 import math
 from matplotlib import pyplot as plt, patches, axes as plt_axes
-from causets.shapes import BallSurface, OpenConeSurface, CoordinateShape, CircleEdge, EllipseEdge
-from causets.calculations import NewtonsMethod as Newton
+from causets.shapes import CoordinateShape  # @UnresolvedImport
+import causets.shapes as shp  # @UnresolvedImport
+from causets.calculations import NewtonsMethod as Newton  # @UnresolvedImport
 
 default_samplingsize: int = 128  # default value for sampling lightcones
-causality_eps: float = 0.00000000000001  # for small causality rounding errors
+causality_eps: float = 1e-12  # tolerance for causality rounding errors
 
 
 class Spacetime(object):
@@ -79,8 +80,8 @@ class Spacetime(object):
         Returns a handle to a function to determine if two points x and y are 
         causally connected for the spacetime. 
 
-        The function accepts coordinates x and y for two points and returns 
-        the causality tuple (x <= y, x > y).
+        The function accepts coordinates x and y for two points and returns the 
+        causality tuple (x <= y, x > y).
         '''
         # This is an example implementation for a spacetime.
         def isCausal(x: np.ndarray,
@@ -92,8 +93,8 @@ class Spacetime(object):
     def _T_slice_sampling(self, t: float, origin: np.ndarray,
                           samplingsize: int = -1) -> np.ndarray:
         '''
-        Internal function for the time sampling array for a cone from 
-        `origin` to time `t`.
+        Internal function for the time sampling array for a cone from `origin` 
+        to time `t`.
         '''
         samplingsize = samplingsize if samplingsize >= 0 \
             else default_samplingsize
@@ -111,8 +112,7 @@ class Spacetime(object):
                   samplingsize: int = -1) -> np.ndarray:
         '''
         Internal function for the cone plotting from `origin` to time `t` 
-        projected onto a X-Y (space-space) plane with space dimensions 
-        `dims`.
+        projected onto a X-Y (space-space) plane with space dimensions `dims`.
         '''
         raise NotImplementedError()
 
@@ -121,14 +121,13 @@ class Spacetime(object):
             Tuple[np.ndarray, np.ndarray, np.ndarray]:
         '''
         Internal function for the cone plotting from `origin` to time `t` 
-        projected onto a X-Y-Z (space-space) plane with space dimensions 
-        `dims`.
+        projected onto a X-Y-Z (space-space) plane with space dimensions `dims`.
         '''
         raise NotImplementedError()
 
     def ConePlotter(self, dims: List[int], plotting_params: Dict[str, Any],
-                    timesign: float, axes: plt_axes.Axes = None,
-                    dynamicAlpha: Callable[[float], float] = None,
+                    timesign: float, axes: Optional[plt_axes.Axes] = None,
+                    dynamicAlpha: Optional[Callable[[float], float]] = None,
                     samplingsize: int = -1) -> \
             Callable[[np.ndarray, float],
                      Union[patches.Patch,
@@ -176,8 +175,8 @@ class Spacetime(object):
             The lightcone reaches up to `timeslice`.
 
             The keyword argument `plotting_params` (with a dynamically 
-            adjusted 'alpha' parameter) are passed to `plot_surface` methods 
-            if it is 3D or to the Patch objects if it is 2D.
+            adjusted 'alpha' parameter) are passed to `plot_surface` methods if 
+            it is 3D or to the Patch objects if it is 2D.
 
             The function returns `None` if no causal cone can be computed for 
             the respective input parameters.
@@ -243,12 +242,12 @@ class Spacetime(object):
 class FlatSpacetime(Spacetime):
     '''
     Initializes Minkowski spacetime for dim >= 1.
-    As additional parameter, the spatial periodicity can be specified (by 
-    the key 'period') as float (to be applied for all spatial 
-    directions equally) or as tuple (with a float for each spatial 
-    dimension). A positive float switches on the periodicity along the 
-    respective spatial direction, using this value as period. 
-    The default is 0.0, no periodicity in any direction. 
+    As additional parameter, the spatial periodicity can be specified (using 
+    the key 'period') as float (to be applied for all spatial directions 
+    equally) or as tuple (with a float for each spatial dimension). A positive 
+    float switches on the periodicity along the respective spatial direction, 
+    using this value as period. The default is 0.0, no periodicity in any 
+    direction. 
     '''
 
     def __init__(self, dim: int,
@@ -341,8 +340,8 @@ class FlatSpacetime(Spacetime):
                 return isCausal_flatperiodic
 
     def ConePlotter(self, dims: List[int], plotting_params: Dict[str, Any],
-                    timesign: float, axes: plt_axes.Axes = None,
-                    dynamicAlpha: Callable[[float], float] = None,
+                    timesign: float, axes: Optional[plt_axes.Axes] = None,
+                    dynamicAlpha: Optional[Callable[[float], float]] = None,
                     samplingsize: int = -1) -> \
             Callable[[np.ndarray, float],
                      Union[patches.Patch,
@@ -425,11 +424,11 @@ class FlatSpacetime(Spacetime):
                 XYZ_list: List[Tuple[np.ndarray, np.ndarray, np.ndarray]] = []
                 if timeaxis < 0:
                     for s in shifts:
-                        XYZ_list = XYZ_list + BallSurface(
+                        XYZ_list = XYZ_list + shp.BallSurface(
                             origin - s, r, samplingsize)
                 else:
                     for s in shifts:
-                        XYZ_list = XYZ_list + OpenConeSurface(
+                        XYZ_list = XYZ_list + shp.OpenConeSurface(
                             origin - s, r, timesign * r,
                             timeaxis, samplingsize)
                 for XYZ in XYZ_list:
@@ -452,8 +451,8 @@ class FlatSpacetime(Spacetime):
                              np.array([origin[0] - r, timeslice]) - s,
                              origin - s])
                     else:
-                        XYpart = CircleEdge(origin - s, radius=r,
-                                            samplingsize=samplingsize)
+                        XYpart = shp.CircleEdge(origin - s, radius=r,
+                                                samplingsize=samplingsize)
                     XY = XYpart if i == 0 \
                         else np.concatenate(
                             (XY, np.array([[np.nan, np.nan]]), XYpart))
@@ -532,8 +531,8 @@ class deSitterSpacetime(_dSSpacetime):
     def __init__(self, dim: int, r_dS: float = 1.0) -> None:
         '''
         Initializes de Sitter spacetime for dim >= 2.
-        It is parametrized by the radius of the cosmological radius `r_dS` 
-        as float.
+        It is parametrized by the radius of the cosmological radius `r_dS` as 
+        float.
         '''
         super().__init__(dim, r_dS)
         self._name = 'de Sitter'
@@ -607,7 +606,8 @@ class deSitterSpacetime(_dSSpacetime):
                 np.sqrt(1 - r0_sq) * delta_t_tanh / r0) / Theta0
             b = np.sqrt((r_s * np.sin(arg_s))**2 /
                         (1 - ((r_s * np.cos(arg_s) - x_c) / a)**2))
-        XY: np.ndarray = EllipseEdge(np.array([x_c, 0.0]), np.array([a, b]))
+        XY: np.ndarray = shp.EllipseEdge(
+            np.array([x_c, 0.0]), np.array([a, b]))
         # Rotation of the ellipse to the angle phi0:
         R: np.ndarray = np.array([[np.cos(phi0), -np.sin(phi0)],
                                   [np.sin(phi0), np.cos(phi0)]])
@@ -618,8 +618,8 @@ class deSitterSpacetime(_dSSpacetime):
 class AntideSitterSpacetime(_dSSpacetime):
     '''
     Implementation of anti-de Sitter spacetimes. Note that anti-de Sitter 
-    spacetimes are not globally hyperbolic, so that infinite sprinkles on 
-    AdS can break the finiteness axiom of causal sets.
+    spacetimes are not globally hyperbolic, so that infinite sprinkles on AdS 
+    can break the finiteness axiom of causal sets.
 
     The past- and future- causal cone plotting is not implemented.
     '''
@@ -658,14 +658,12 @@ class AntideSitterSpacetime(_dSSpacetime):
 
 class BlackHoleSpacetime(Spacetime):
     '''
-    Implementation of black hole spacetimes, which are globally 
-    hyperbolic.
+    Implementation of black hole spacetimes, which are globally hyperbolic.
     '''
 
     _r_S: float
 
-    def __init__(self, dim: int,
-                 r_S: float = 0.5,
+    def __init__(self, dim: int, r_S: float = 0.5,
                  metric: str = 'Eddington-Finkelstein') -> None:
         '''
         Initializes a black hole spacetime for dim == 2.
@@ -697,8 +695,8 @@ class BlackHoleSpacetime(Spacetime):
     def _light_EF(self, t0: float, r0: float, ingoing: bool = False,
                   derivative: int = 0) -> Callable[[Any], Any]:
         '''
-        Returns the -cone function (and its derivatives) for `ingoing` 
-        and outgoing radial lightrays starting at (t0, r0), for the 
+        Returns the -cone function (and its derivatives) for `ingoing` and 
+        outgoing radial lightrays starting at (t0, r0), for the 
         Eddington-Finkelstein metric.
         '''
         if derivative == 0:
@@ -722,9 +720,9 @@ class BlackHoleSpacetime(Spacetime):
     def _light_S(self, t0: float, r0: float, ingoing: bool = False,
                  derivative: int = 0) -> Callable[[Any], Any]:
         '''
-        Returns the -cone function (and its derivatives) for `ingoing` 
-        and outgoing radial lightrays starting at (t0, r0), for the 
-        Schwarzschild metric.
+        Returns the -cone function (and its derivatives) for `ingoing` and 
+        outgoing radial lightrays starting at (t0, r0), for the Schwarzschild 
+        metric.
         '''
         if derivative == 0:
             if ingoing:
@@ -782,11 +780,11 @@ class BlackHoleSpacetime(Spacetime):
                 t_out: float = _func(r_y) - _func(r_x)
                 t_in: float = -t_out if isSchwarzschildMetric \
                     else r_x - r_y
-                if r_y <= r_x <= self._r_S:  # x is inside, y is further inside
+                if r_y <= r_x <= self._r_S:  # x is inside, y < x
                     isCausal = t_out >= t_delta >= t_in
-                elif self._r_S <= r_x >= r_y:  # x is outside, y is within radius x
+                elif self._r_S <= r_x >= r_y:  # x is outside, y < x
                     isCausal = t_delta >= t_in
-                elif self._r_S <= r_x <= r_y:  # x is outside, y is further outside
+                elif self._r_S <= r_x <= r_y:  # x is outside, y > x
                     isCausal = t_delta >= t_out
                 return (False, isCausal) if isSwapped else (isCausal, False)
             return isCausal_BH2D

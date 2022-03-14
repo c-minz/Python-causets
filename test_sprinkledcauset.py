@@ -7,8 +7,8 @@ Created on 22 Jul 2020
 '''
 from __future__ import annotations
 import unittest
-from causets.sprinkledcauset import SprinkledCauset
-from causets.test_causet import CausetTestCase
+from causets.sprinkledcauset import SprinkledCauset  # @UnresolvedImport
+from causets.test_causet import CausetTestCase  # @UnresolvedImport
 
 
 class TestSprinkledCauset(CausetTestCase):

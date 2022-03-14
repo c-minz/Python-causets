@@ -6,10 +6,10 @@ Created on 25 Oct 2020
 @license: BSD 3-Clause
 '''
 from __future__ import annotations
-from typing import Set, List, Tuple, Iterator, Dict
+from typing import Set, List, Tuple, Iterator, Dict  # @UnusedImport
 import numpy as np
-from causets.causetevent import CausetEvent
-from causets.causet import Causet
+from causets.causetevent import CausetEvent  # @UnresolvedImport
+from causets.causet import Causet  # @UnresolvedImport
 
 
 def AntichainPermutations(C: Causet, antichain: Set[CausetEvent],
@@ -473,14 +473,15 @@ def __perm_jointsubset(C: Causet, E: Set[CausetEvent],
     P: List[int] = []                # permutation for v-coordinates
     E_count: int = len(E)
     Inf: Set[CausetEvent] = C.PastInfOf(E)
+    e: CausetEvent
     while len(Inf) == 1:
-        e: CausetEvent = Inf.pop()
+        e = Inf.pop()
         L_start.append(e)
         E.remove(e)
         Inf = C.PastInfOf(E)
     Inf = C.FutureInfOf(E)
     while len(Inf) == 1:
-        e: CausetEvent = Inf.pop()
+        e = Inf.pop()
         L_end.insert(0, e)
         E.remove(e)
         Inf = C.FutureInfOf(E)

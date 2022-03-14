@@ -8,8 +8,9 @@ Created on 16 Aug 2021
 from __future__ import annotations
 import unittest
 import numpy as np
-from causets.spacetimes import Spacetime, deSitterSpacetime
-from causets.shapes import CoordinateShape, CircleEdge, EllipseEdge
+from causets.spacetimes import Spacetime  # @UnresolvedImport @UnusedImport
+from causets.spacetimes import deSitterSpacetime  # @UnresolvedImport
+from causets.shapes import CircleEdge  # @UnresolvedImport
 from matplotlib import pyplot as plt, patches, axes
 
 

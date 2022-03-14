@@ -6,24 +6,24 @@ Created on 9 Oct 2020
 @license: BSD 3-Clause
 '''
 from __future__ import annotations
-from typing import List, Tuple
-from causets.sprinkledcauset import SprinkledCauset
-from causets.spacetimes import deSitterSpacetime
-from causets.shapes import CoordinateShape
-from causets.causetevent import CausetEvent
+from typing import List, Tuple  # @UnusedImport
+from causets.sprinkledcauset import SprinkledCauset  # @UnresolvedImport
+from causets.spacetimes import deSitterSpacetime  # @UnresolvedImport
+from causets.shapes import CoordinateShape  # @UnresolvedImport
+from causets.causetevent import CausetEvent  # @UnresolvedImport @UnusedImport
 from matplotlib import pyplot as plt
-import causets.causetplotting as cplt
+import causets.causetplotting as cplt  # @UnresolvedImport
 
 # Create a sprinkle from de Sitter spacetime with cosmological horizon at
-# radius 1.0. Coordinates range over a hollow cylinder with height 3.0.
-# 30% of the cylinder interior is hollow.
+# radius 1.0. Coordinates range over a hollow cylinder with height 3.0. 30% of
+# the cylinder interior is hollow.
 S: CoordinateShape = CoordinateShape(3, 'cylinder', duration=3.0, hollow=0.3)
 C: SprinkledCauset = SprinkledCauset(intensity=100.0,
                                      spacetime=deSitterSpacetime(3), shape=S)
 e: CausetEvent = C.CentralAntichain().pop()  # pick one event
 
 # Plotting setup:
-cplt.setDefaultColors('UniYork')  # University of York brand colours
+cplt.setDefaultColors('UniYork')  # using University of York brand colours
 dims: List[int] = [1, 2, 0]  # choose the (order of) plot dimensions
 if len(dims) > 2:
     plt.figure(figsize=(8.0, 8.0))

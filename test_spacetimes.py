@@ -8,9 +8,10 @@ Created on 05 Oct 2020
 from __future__ import annotations
 import unittest
 import numpy as np
-from causets.spacetimes import Spacetime, deSitterSpacetime
-from causets.shapes import CoordinateShape, EllipseEdge
-from matplotlib import pyplot as plt, patches, axes
+from causets.spacetimes import Spacetime  # @UnresolvedImport @UnusedImport
+from causets.spacetimes import deSitterSpacetime  # @UnresolvedImport
+from causets.shapes import CoordinateShape  # @UnresolvedImport
+from matplotlib import pyplot as plt  # @UnresolvedImport
 
 
 class TestSpacetime(unittest.TestCase):

@@ -19,47 +19,46 @@ class CoordinateShape(object):
     Handles a coordinate shape for embedding (and sprinkling) regions.
     '''
 
-    __dim: int
-    __name: str
-    __center: np.ndarray
-    __params: Dict[str, Any]
-    __volume: float
+    _dim: int
+    _name: str
+    _center: np.ndarray
+    _params: Dict[str, Any]
+    _volume: float
 
     def __init__(self, dim: int, name: str, **kwargs) -> None:
         '''
         Sets the embedding shape, but does not adjust event coordinates.
         The dimension parameter dim must be an integer greater than zero.
 
-        Accepted shape names (and parameters):
-        'ball' with keyword argument 'radius' (float), 1.0 by default.
-        Ball shape in all spacetime coordinates.
-
-        'diamond' (or 'bicone') with keyword argument 'radius' (float), 
-        1.0 by default.
-        Ball shape in all space coordinates and conical to the past and 
-        future.
-
-        'cylinder' with keyword arguments 'radius' (float), 1.0 by default, 
-        and 'duration' (float), twice of 'radius' by default. 
-        Ball shape in all space coordinates and straight along the time 
-        coordinate for the length 'duration'.
-
-        As additional keyword argument 'hollow' (float) can be specified 
-        (0.0 by default) to get a hollow version of the shapes 'ball', 
-        'diamond' or 'cylinder' with an empty interior such that the 
-        parameter specifies the fraction of the radius that is hollow.
-
-        'cube' with keyword argument 'edge' (float), 1.0 by default.
-        Cube shape with the same edge length 'edge' in all spacetime 
-        coordinates.
-
-        'cuboid' with keyword arguments 'edges' (iterable of float), unit 
-        vector by default.
-        Cuboid shape with distinct edge lengths 'edges' in the respective 
-        spacetime coordinates.
-
-        A further keyword argument 'center' (iterable of float) specifies 
-        the central point with the zero vector as default value. 
+        Accepted shape names (and parameters)
+        -------------------------------------
+        'ball' ('radius': float, default: 1.0, must be > 0.0,
+                'hollow': float, default: 0.0, must be >= 0.0 and < 1.0)
+            Ball shape in all spacetime coordinates. The parameter 'hollow' is 
+            the fraction (between 0.0 and 1.0) of the radius of the ball to 
+            give an empty interior.
+        'bicone' ('radius': float, default: 1.0, must be > 0.0,
+                  'hollow': float, default: 0.0, must be >= 0.0 and < 1.0)
+            Ball shape in all space coordinates and conical to the past and 
+            future. The parameter 'hollow' is the fraction (between 0.0 and 
+            1.0) of the radius of the bicone to give an empty interior.
+            (alternative shape name: 'diamond')
+        'cylinder' ('radius': float, default: 1.0, must be > 0.0,
+                    'duration': float, default: 2.0 * radius, must be > 0.0,
+                    'hollow': float, default: 0.0, must be >= 0.0 and < 1.0)
+            Ball shape in all space coordinates and straight along the time 
+            coordinate for the length 'duration'. The parameter 'hollow' is 
+            the fraction (between 0.0 and 1.0) of the radius and duration of 
+            the cylinder to give an empty interior.
+        'cube' ('edge': float, default: 1.0, must be > 0.0)
+            Cube shape with the same edge length 'edge' in all spacetime 
+            coordinates.
+        'cuboid' ('edges': Iterable[float], default: [1.0, 1.0, ...], 
+                                            must all be > 0.0)
+            Cuboid shape with distinct edge lengths 'edges' in the respective 
+            spacetime coordinates. The default edges yield a cube.
+        All shapes have a further keyword argument, 'center' (Iterable[float]) 
+        to specify the central point, with the zero vector as default value.
 
         Raises a ValueError if some input value is invalid.
         '''
@@ -67,185 +66,165 @@ class CoordinateShape(object):
         if dim < 1:
             raise ValueError('The value ''dim'' is out of range. ' +
                              'It must be an integer of at least 1.')
-        self.__dim = dim
+        self._dim = dim
         # set name:
-        if name == 'bicone':
-            name = 'diamond'
-        elif name not in ['ball', 'diamond', 'cylinder',
+        if name == 'diamond':
+            name = 'bicone'
+        elif name not in ['ball', 'bicone', 'cylinder',
                           'cube', 'cuboid']:
             raise ValueError('A shape with name ''' +
                              f'{name}'' is not supported.')
-        self.__name = name
-        # set center point:
+        self._name = name
+        # set centre point:
         try:
-            self.__center = np.array(kwargs['center'], dtype=np.float32)
-            if self.__center.shape != (dim,):
+            self._center = np.array(kwargs['center'], dtype=np.float32)
+            if self._center.shape != (dim,):
                 raise TypeError
         except KeyError:
-            self.__center = np.zeros(dim, dtype=np.float32)
+            self._center = np.zeros(dim, dtype=np.float32)
         except TypeError:
             raise ValueError('The value for the key ''center'' has to be ' +
                              f'an Iterable of {dim} float values.')
 
         def param_rangecheck(p: str, maxValue: float = math.nan,
                              canBeZero: bool = False):
-            isTooLow: bool = (canBeZero and (self.__params[p] < 0.0)) or \
-                (not canBeZero and self.__params[p] <= 0.0)
-            errorStr: str
-            if canBeZero:
-                errorStr = 'greater than or equal to 0'
-            else:
-                errorStr = 'greater than 0'
+            isTooLow: bool = (canBeZero and (self._params[p] < 0.0)) or \
+                (not canBeZero and self._params[p] <= 0.0)
+            errorStr: str = 'greater than or equal to 0' if canBeZero else \
+                'greater than 0'
             if math.isnan(maxValue):
                 if isTooLow:
                     raise ValueError('The parameter ''' +
                                      f'{p}'' is out of range. ' +
                                      f'It must be a float {errorStr}.')
-            elif isTooLow or (self.__params[p] >= maxValue):
+            elif isTooLow or (self._params[p] >= maxValue):
                 raise ValueError('The parameter ''' +
                                  f'{p}'' is out of range. ' +
                                  f'It must be a float {errorStr} and '
                                  f'smaller than {maxValue}.')
 
         # set shape parameters:
-        isHollow: bool = False
         value: float
-        self.__params = {}
-        if name in {'ball', 'diamond', 'cylinder'}:
-            try:
-                value = kwargs['radius']
-            except KeyError:
-                value = 1.0
-            self.__params['radius'] = np.array(value, dtype=np.float32)
+        self._params = {}
+        if name in {'ball', 'bicone', 'cylinder'}:
+            self._params['radius'] = np.array(kwargs.get('radius', 1.0),
+                                              dtype=np.float32)
             param_rangecheck('radius')
-            try:
-                value = kwargs['hollow']
-            except KeyError:
-                value = 0.0
-            isHollow = value > 0.0
-            self.__params['hollow'] = np.array(value,
-                                               dtype=np.float32)
+            self._params['hollow'] = np.array(kwargs.get('hollow', 0.0),
+                                              dtype=np.float32)
             param_rangecheck('hollow', 1.0, True)
-        if 'cylinder' in name:
-            try:
-                value = kwargs['duration']
-            except KeyError:
-                value = 2.0 * self.__params['radius']
-            self.__params['duration'] = np.array(value, dtype=np.float32)
-            param_rangecheck('duration')
+            if name == 'cylinder':
+                self._params['duration'] = np.array(
+                    kwargs.get('duration', 2.0 * self._params['radius']),
+                    dtype=np.float32)
+                param_rangecheck('duration')
         elif name == 'cube':
-            try:
-                value = kwargs['edge']
-            except KeyError:
-                value = 1.0
-            self.__params['edge'] = np.array(value, dtype=np.float32)
+            self._params['edge'] = np.array(kwargs.get('edge', 1.0),
+                                            dtype=np.float32)
             param_rangecheck('edge')
         elif name == 'cuboid':
-            try:
-                value = kwargs['edges']
-                self.__params['edges'] = np.array(value, dtype=np.float32)
-            except KeyError:
-                value = np.ones(dim, dtype=np.float32)
-                self.__params['edges'] = value
-            if self.__params['edges'].shape != (dim,):
+            self._params['edges'] = np.array(
+                kwargs.get('edges', np.ones((dim,))), dtype=np.float32)
+            if self._params['edges'].shape != (dim,):
                 raise ValueError('The value for the key "edges" has ' +
-                                 f'to be an Iterable of {dim} ' +
-                                 'float values.')
-            if any(self.__params['edges'] <= 0.0):
+                                 f'to be an Iterable of {dim} float values.')
+            if any(x <= 0.0 for x in self._params['edges']):
                 raise ValueError('At least one edge length is out of range.' +
                                  'Each must be a float greater than 0.')
-        # set volume:
-        V: float = 0.0
-        r: float
-        d_f: float = float(dim)
-        if name == 'ball':
-            r = self.__params['radius']
-            V = r**dim
-            if isHollow:
-                V -= (self.__params['hollow'] * r)**dim
-            V *= math.pi**(d_f / 2.0) / math.gamma(d_f / 2.0 + 1.0)
-        elif name == 'cylinder':
-            r = self.__params['radius']
-            V = r**(dim - 1)
-            if isHollow:
-                V -= (self.__params['hollow'] * r)**(dim - 1)
-            V *= math.pi**(d_f / 2.0 - 0.5) / math.gamma(d_f / 2.0 + 0.5)
-            V *= self.__params['duration']
-        elif name == 'diamond':
-            r = self.__params['radius']
-            V = r**dim
-            if isHollow:
-                V -= (self.__params['hollow'] * r)**dim
-            V *= math.pi**(d_f / 2.0 - 0.5) / math.gamma(d_f / 2.0 + 0.5)
-            V *= 2.0 / d_f
-        elif name == 'cube':
-            V = self.__params['edge']**dim
-        elif name == 'cuboid':
-            V = math.prod(self.__params['edges'])
-        self.__volume = V
 
     def __str__(self):
-        if ('hollow' in self.__params) and \
-                (self.__params['hollow'] > 0.0):
-            return f'hollow {self.__dim}-{self.__name}'
+        if ('hollow' in self._params) and \
+                (self._params['hollow'] > 0.0):
+            return f'hollow {self._dim}-{self._name}'
         else:
-            return f'{self.__dim}-{self.__name}'
+            return f'{self._dim}-{self._name}'
 
     def __repr__(self):
-        return f'{self.__class__.__name__}(' + \
-            f'{self.__dim}, {self.__name}, center={self.__center}, ' + \
-            f'**{self.__params})'
+        return f'{self._class__._name__}(' + \
+            f'{self._dim}, {self._name}, center={self._center}, ' + \
+            f'**{self._params})'
 
     @property
     def Dim(self) -> int:
         '''
         Returns the dimension of the spacetime (region).
         '''
-        return self.__dim
+        return self._dim
 
     @property
     def Name(self) -> str:
         '''
         Returns the shape name of the spacetime region.
         '''
-        return self.__name
+        return self._name
 
     @property
     def Center(self) -> np.ndarray:
         '''
         Returns the shape center of the spacetime region.
         '''
-        return self.__center
+        return self._center
 
     def Parameter(self, key: str) -> Any:
         '''
         Returns a parameter for the shape of the spacetime region.
         '''
-        return self.__params[key]
+        return self._params[key]
 
     @property
     def Volume(self) -> float:
         '''
         Returns the volume of the shape.
+        (On the first call of this property, the volume is computed and stored 
+        in an internal variable.)
         '''
-        return self.__volume
+        if not hasattr(self, '_volume'):
+            V: float = 0.0
+            r: float = self._params.get('radius', 0.0)
+            isHollow: bool = self._params.get('hollow', 0.0) > 0.0
+            if self._name == 'ball':
+                V = r**self._dim
+                if isHollow:
+                    V -= (self._params['hollow'] * r)**self._dim
+                V *= math.pi**(self._dim / 2.0) / \
+                    math.gamma(self._dim / 2.0 + 1.0)
+            elif self._name == 'cylinder':
+                V = r**(self._dim - 1)
+                if isHollow:
+                    V -= (self._params['hollow'] * r)**(self._dim - 1)
+                V *= math.pi**(self._dim / 2.0 - 0.5) / \
+                    math.gamma(self._dim / 2.0 + 0.5)
+                V *= self._params['duration']
+            elif self._name == 'bicone':
+                V = r**self._dim
+                if isHollow:
+                    V -= (self._params['hollow'] * r)**self._dim
+                V *= math.pi**(self._dim / 2.0 - 0.5) / \
+                    math.gamma(self._dim / 2.0 + 0.5)
+                V *= 2.0 / self._dim
+            elif self._name == 'cube':
+                V = self._params['edge']**self._dim
+            elif self._name == 'cuboid':
+                V = math.prod(self._params['edges'])
+            self._volume = V
+        return self._volume
 
     def MaxEdgeHalf(self, dims: List[int]) -> float:
         '''
         Returns the half of the largest shape edge of the spacetime region.
         '''
         if self.Name == 'cube':
-            return self.__params['edge'] / 2
-        elif self.Name in {'diamond', 'ball'}:
-            return self.__params['radius']
+            return self._params['edge'] / 2
+        elif self.Name in {'bicone', 'ball'}:
+            return self._params['radius']
         elif self.Name == 'cylinder':
             if dims.count(0) > 0:
-                return max([self.__params['radius'],
-                            self.__params['duration'] / 2])
+                return max([self._params['radius'],
+                            self._params['duration'] / 2])
             else:
-                return self.__params['radius']
+                return self._params['radius']
         else:  # cuboid
-            return max(self.__params['edges'][dims]) / 2
+            return max(self._params['edges'][dims]) / 2
 
     def Limits(self, dim: int) -> Tuple[float, float]:
         '''
@@ -256,14 +235,14 @@ class CoordinateShape(object):
             raise ValueError('The argument d is out of range, ' +
                              f'{dim} not in [0, {self.Dim}).')
         if (dim == 0) and (self.Name == 'cylinder'):
-            l = self.__params['duration'] / 2
+            l = self._params['duration'] / 2
         elif self.Name == 'cube':
-            l = self.__params['edge'] / 2
+            l = self._params['edge'] / 2
         elif self.Name == 'cuboid':
-            l = self.__params['edges'][dim] / 2
+            l = self._params['edges'][dim] / 2
         else:
-            l = self.__params['radius']
-        shift: float = self.__center[dim]
+            l = self._params['radius']
+        shift: float = self._center[dim]
         return (-l + shift, l + shift)
 
     def plot(self, dims: List[int], axes: plt_axes.Axes = None,
@@ -305,28 +284,28 @@ class CoordinateShape(object):
         except ValueError:
             timeaxis = -1
         hollow: float = 0.0
-        if 'hollow' in self.__params:
-            hollow = self.__params['hollow']
+        if 'hollow' in self._params:
+            hollow = self._params['hollow']
         if is3d:
             S: List[Tuple[np.ndarray, np.ndarray, np.ndarray]]
             r: float
             if self.Name == 'cube':
                 S = CubeSurface(self.Center[dims],
-                                self.__params['edge'])
+                                self._params['edge'])
             elif self.Name == 'ball' or \
-                    ((timeaxis < 0) and (self.Name in {'diamond', 'cylinder'})):
-                r = self.__params['radius']
+                    ((timeaxis < 0) and (self.Name in {'bicone', 'cylinder'})):
+                r = self._params['radius']
                 S = BallSurface(self.Center[dims], r)
                 if hollow > 0.0:
                     S = BallSurface(self.Center[dims],
                                     hollow * r) + S
             elif self.Name == 'cylinder':
-                r = self.__params['radius']
-                h: float = self.__params['duration']
+                r = self._params['radius']
+                h: float = self._params['duration']
                 S = CylinderSurface(self.Center[dims],
                                     r, h, hollow, timeaxis)
-            elif self.Name == 'diamond':
-                r = self.__params['radius']
+            elif self.Name == 'bicone':
+                r = self._params['radius']
                 conecenter: np.ndarray = self.Center[dims]
                 tip: np.ndarray = conecenter.copy()
                 top: np.ndarray = conecenter.copy()
@@ -342,7 +321,7 @@ class CoordinateShape(object):
                         OpenConeSurface(top, r, -r, timeaxis) + S
             else:  # cuboid
                 S = CuboidSurface(self.Center[dims],
-                                  self.__params['edges'][dims])
+                                  self._params['edges'][dims])
             for XYZ in S:
                 axes.plot_surface(*XYZ, **plotoptions)
             return S
@@ -351,34 +330,34 @@ class CoordinateShape(object):
             a: float
             b: float
             if self.Name == 'cube':
-                a = self.__params['edge']
+                a = self._params['edge']
                 p = patches.Rectangle(self.Center[dims] -
                                       0.5 * np.array([a, a]),
                                       width=a, height=a, **plotoptions)
             elif self.Name == 'ball' or \
-                    ((timeaxis < 0) and (self.Name in {'diamond', 'cylinder'})):
+                    ((timeaxis < 0) and (self.Name in {'bicone', 'cylinder'})):
                 if hollow == 0.0:
                     p = patches.Circle(self.Center[dims],
-                                       self.__params['radius'], **plotoptions)
+                                       self._params['radius'], **plotoptions)
                 else:
                     p = patches.Polygon(CircleEdge(self.Center[dims],
-                                                   self.__params['radius'],
+                                                   self._params['radius'],
                                                    hollow),
                                         **plotoptions)
             elif self.Name == 'cylinder':
                 cyl: np.ndarray = CylinderCutEdge(self.Center[dims],
-                                                  self.__params['radius'],
-                                                  self.__params['duration'],
+                                                  self._params['radius'],
+                                                  self._params['duration'],
                                                   hollow)
                 if timeaxis == 0:
                     cyl = cyl[:, [1, 0]]
                 p = patches.Polygon(cyl, **plotoptions)
-            elif self.Name == 'diamond':
-                p = patches.Polygon(DiamondEdge(self.Center[dims],
-                                                self.__params['radius'], hollow),
+            elif self.Name == 'bicone':
+                p = patches.Polygon(BiconeEdge(self.Center[dims],
+                                               self._params['radius'], hollow),
                                     **plotoptions)
             else:  # cuboid
-                edges: np.ndarray = self.__params['edges'][dims]
+                edges: np.ndarray = self._params['edges'][dims]
                 p = patches.Rectangle(self.Center[dims] - 0.5 * edges,
                                       width=edges[0], height=edges[1],
                                       **plotoptions)
@@ -448,11 +427,11 @@ def EllipseEdge(center: np.ndarray, radii: np.ndarray,
     return edge
 
 
-def DiamondEdge(center: np.ndarray, radius: float,
-                hollow: float = 0.0) -> np.ndarray:
+def BiconeEdge(center: np.ndarray, radius: float,
+               hollow: float = 0.0) -> np.ndarray:
     '''
-    Returns a matrix of size m x 2 that describes the edge of a 2D diamond.
-    If the diamond is hollow, `m = 11`, else it is `5`.
+    Returns a matrix of size m x 2 that describes the edge of a 2D bicone.
+    If the bicone is hollow, `m = 11`, else it is `5`.
     '''
     edge: np.ndarray = np.array([[center[0], center[1] + radius],
                                  [center[0] - radius, center[1]],

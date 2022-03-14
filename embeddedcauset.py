@@ -6,13 +6,14 @@ Created on 20 Jul 2020
 @license: BSD 3-Clause
 '''
 from __future__ import annotations
-from typing import Set, List, Iterable, Tuple, Callable, Union
+from typing import Set, List, Iterable, Tuple  # @UnusedImport
+from typing import Callable, Union, Optional  # @UnusedImport
 import numpy as np
-from causets.causetevent import CausetEvent
-from causets.causet import Causet
-from causets.shapes import CoordinateShape
-from causets import spacetimes
-from causets.spacetimes import Spacetime
+from causets.causetevent import CausetEvent  # @UnresolvedImport
+from causets.causet import Causet  # @UnresolvedImport
+from causets.shapes import CoordinateShape  # @UnresolvedImport
+from causets import spacetimes  # @UnresolvedImport
+from causets.spacetimes import Spacetime  # @UnresolvedImport
 
 
 class EmbeddedCauset(Causet):
@@ -30,39 +31,37 @@ class EmbeddedCauset(Causet):
         raise ValueError(e % argument)
 
     def __init__(self,
-                 spacetime: Union[Spacetime, str] = None,
-                 shape: Union[str, CoordinateShape] = None,
-                 coordinates: Union[List[List[float]],
-                                    List[np.ndarray],
-                                    np.ndarray] = None,
+                 spacetime: Optional[Union[Spacetime, str]] = None,
+                 shape: Optional[Union[str, CoordinateShape]] = None,
+                 coordinates: Optional[Union[List[List[float]],
+                                             List[np.ndarray],
+                                             np.ndarray]] = None,
                  dim: int = -1) -> None:
         '''
         Generates an embedded causal set in a spacetime subset of a specified 
         (coordinate) shape and with the events specified by `causet` and 
         `coordinates`.
 
-        Optional arguments:
-        `spacetime`: `Spacetime` object or name of spacetime
-        A spacetime object (including parameters) that determines the 
-        causality, or name of spacetime to initialise with default 
-        parameters. Supported values for the name are 'flat', 'Minkowski', 
-        'dS', 'de Sitter', 'AdS', 'Anti-de Sitter', 'black hole', 
-        'Schwarzschild'.
-        Default: `spacetimes.FlatSpacetime` of the determined dimension.
-
-        `shape`: str or `CoordinateShape` object
-        (The name of) a coordinate shape that describes the embedding 
-        region of the events. 
-        Default: `DefaultShape()` of the spacetime object.
-
-        `coordinates`: np.ndarray
-        List of coordinates, a row of coordinates for event to be created.
-
-        `dim`: int
-        Dimension for the default spacetime.
-        Default: 2
-        A `ValueError` is raised if the dimensions of the arguments are not 
-        compatible.
+        Optional parameters
+        -------------------
+        spacetime: Spacetime, str
+            A spacetime object (including parameters) that determines the 
+            causality, or name of spacetime to initialise with default 
+            parameters. Supported values for the name are 'flat', 'Minkowski', 
+            'dS', 'de Sitter', 'AdS', 'Anti-de Sitter', 'black hole', 
+            'Schwarzschild'.
+            Default: `spacetimes.FlatSpacetime` of the determined dimension.
+        shape: str, CoordinateShape
+            (The name of) a coordinate shape that describes the embedding 
+            region of the events. 
+            Default: `DefaultShape()` of the spacetime object.
+        coordinates: np.ndarray
+            List of coordinates, a row of coordinates for event to be created.
+        dim: int
+            Dimension for the default spacetime.
+            Default: 2
+        Note: A `ValueError` is raised if the dimensions of any of the four 
+        optional arguments are not compatible.
         '''
         # initialise base class (Causet):
         super().__init__()
@@ -121,9 +120,9 @@ class EmbeddedCauset(Causet):
     @staticmethod
     def _Permutation_Coords(P: List[int], radius: float) -> np.ndarray:
         '''
-        Returns a matrix of (t, x) coordinates with `len(P)` rows, a 
-        pair of coordinates for each element in the permutation integer 
-        list (integers from 1 to `len(P)`).
+        Returns a matrix of (t, x) coordinates with `len(P)` rows, a pair of 
+        coordinates for each element in the permutation integer list (integers 
+        from 1 to `len(P)`).
         '''
         count: int = len(P)
         coords: np.ndarray = np.empty((count, 2))
@@ -137,12 +136,12 @@ class EmbeddedCauset(Causet):
         return coords
 
     @staticmethod
-    def FromPermutation(P: List[int], labelFormat: str = None,
+    def FromPermutation(P: List[int], labelFormat: Optional[str] = None,
                         radius: float=1.0) -> 'EmbeddedCauset':
         '''
-        Generates a causal set from the permutation P of integers from 1 
-        to len(P) - that can be embedded in an Alexandrov subset of 
-        Minkowski spacetime.
+        Generates a causal set from the permutation P of integers from 1 to 
+        `len(P)` - that can be embedded in an Alexandrov subset of Minkowski 
+        spacetime.
         '''
         C: EmbeddedCauset = EmbeddedCauset(
             shape=CoordinateShape(2, 'diamond', radius=radius))
@@ -173,8 +172,8 @@ class EmbeddedCauset(Causet):
     @property
     def Density(self) -> float:
         '''
-        Returns the density of events as ratio of the set cardinality to 
-        the embedding shape's volume.
+        Returns the density of events as ratio of the set cardinality to the 
+        embedding shape's volume.
         '''
         return float(self.Card) / self.Shape.Volume
 
@@ -184,14 +183,13 @@ class EmbeddedCauset(Causet):
         Returns the fundamental length scale as inverse d-root of 
         `self.Density` if `card > 0`, else 0.0. 
         '''
-        return 0.0 if self.Card == 0 \
-            else self.Density**(1.0 / self.Shape.Dim)
+        return 0.0 if self.Card == 0 else self.Density**(1.0 / self.Shape.Dim)
 
     def create(self, coordinates: Union[List[List[float]],
                                         List[np.ndarray],
                                         np.ndarray],
-               labelFormat: str = None,
-               relate: bool = True) -> Set[CausetEvent]:
+               labelFormat: Optional[str] = None, relate: bool = True) -> \
+            Set[CausetEvent]:
         '''
         Creates new events with the specified coordinates, adds them to 
         this instance and returns the new set of events.
@@ -200,17 +198,16 @@ class EmbeddedCauset(Causet):
         each event).
         '''
         n: int = self.Card + 1
-        eventSet: Set[CausetEvent] = {CausetEvent(label=n + i
-                                                  if labelFormat is None
-                                                  else labelFormat.format(n + i),
-                                                  coordinates=c)
-                                      for i, c in enumerate(coordinates)}
+        eventSet: Set[CausetEvent] = {
+            CausetEvent(label=(n + i) if labelFormat is None else
+                        labelFormat.format(n + i), coordinates=c)
+            for i, c in enumerate(coordinates)}
         self._events.update(eventSet)
         if relate:
             self.relate()
         return eventSet
 
-    def relate(self, link: bool=True) -> None:
+    def relate(self, link: bool = True) -> None:
         '''
         Resets the causal relations between all events based on their 
         embedding in the given spacetime manifold.
@@ -239,9 +236,9 @@ class EmbeddedCauset(Causet):
 
     def relabel(self, dim: int = 0, descending: bool = False) -> None:
         '''
-        Resets the labels of all events to ascending (default) or 
-        descending integers (converted to str) corresponding to the 
-        coordinate component in dimension 'dim'.
+        Resets the labels of all events to ascending (default) or descending 
+        integers (converted to str) corresponding to the coordinate component 
+        in dimension 'dim'.
         '''
         eventList = list(self._events)
         sorted_idx = np.argsort(np.array(

@@ -6,7 +6,7 @@ Created on 19 Aug 2020
 @license: BSD 3-Clause
 '''
 from __future__ import annotations
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 # This is the list of supported color schemes.
 # When adding a new entry, please specify a value for each color key that is
@@ -106,24 +106,24 @@ def getGlobalColorScheme() -> Dict[str, str]:
     return __global_color_scheme
 
 
-def getColor(color: str, schemeName: str = None) -> str:
+def getColor(color: str, schemeName: Optional[str] = None) -> str:
     '''
     Converts a color value string by the color scheme to a matplotlib color.
     '''
-    CS: Dict[str, str] = getGlobalColorScheme() if schemeName is None \
-        else pickColorScheme(schemeName)
+    CS: Dict[str, str] = getGlobalColorScheme() if schemeName is None else \
+        pickColorScheme(schemeName)
     if color.startswith('cs:'):
         color = CS[color[3:]]
     return color
 
 
 def convertColorsInDict(plotParams: Dict[str, Any],
-                        schemeName: str = None) -> Dict[str, Any]:
+                        schemeName: Optional[str] = None) -> Dict[str, Any]:
     '''
     Converts all color value strings in an dictionary.
     '''
-    CS: Dict[str, str] = getGlobalColorScheme() if schemeName is None \
-        else pickColorScheme(schemeName)
+    CS: Dict[str, str] = getGlobalColorScheme() if schemeName is None else \
+        pickColorScheme(schemeName)
     for key, value in plotParams.items():
         if isinstance(value, str) and value.startswith('cs:'):
             value = CS[value[3:]]
@@ -132,12 +132,12 @@ def convertColorsInDict(plotParams: Dict[str, Any],
 
 
 def convertColorsInList(plotParams: List[str],
-                        schemeName: str = None) -> List[str]:
+                        schemeName: Optional[str] = None) -> List[str]:
     '''
     Converts all color value strings in a list.
     '''
-    CS: Dict[str, str] = getGlobalColorScheme() if schemeName is None \
-        else pickColorScheme(schemeName)
+    CS: Dict[str, str] = getGlobalColorScheme() if schemeName is None else \
+        pickColorScheme(schemeName)
     for i, value in enumerate(plotParams):
         if value.startswith('cs:'):
             value = CS[value[3:]]

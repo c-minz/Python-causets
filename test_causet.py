@@ -8,8 +8,8 @@ Created on 20 Jul 2020
 from __future__ import annotations
 from typing import Iterable
 import unittest
-from causets.causetevent import CausetEvent
-from causets.causet import Causet
+from causets.causetevent import CausetEvent  # @UnresolvedImport
+from causets.causet import Causet  # @UnresolvedImport
 import numpy as np
 import os
 

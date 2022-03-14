@@ -6,17 +6,15 @@ Created on 15 Jul 2020
 @license: BSD 3-Clause
 '''
 from __future__ import annotations
-from typing import Set, Iterable, Any
+from typing import Set, List, Iterable, Any
 import math
-import numpy as np
-from builtins import str
 
 
 class CausetEvent(object):
     '''
     Handles a single event (point) and its causal relations in a causal set.
-    The attribute 'Label' can be used to assign a label, but does not 
-    need to be unique (default: None).
+    The attribute 'Label' can be used to assign a label, but does not need to 
+    be unique (default: None).
 
     Instances of CausetEvent are comparable:
     a == b             is True if a is the same instance as b
@@ -30,45 +28,38 @@ class CausetEvent(object):
     Label: Any
     _prec: Set['CausetEvent']
     _succ: Set['CausetEvent']
+    _coordinates: List[float]
+    _position: List[float]
 
     def __init__(self, **kwargs) -> None:
         '''
         Initialise a CausetEvent.
-        The following keywords are processed:
-        'label': str to label the event (does not need to be unique)
-        'past': Set[CausetEvent] as a set of (linked) past events. 
-        This instance will also be added to their future.
-        'future': Set[CausetEvent] as a set of (linked) future events. 
-        This instance will also be added to their past.
-        'coordinates': Iterable[float] for the coordinates if the event is 
-        embedded in a spacetime region.
-        'position': Iterable[float] for the coordinate pair of the event in 
-        a Hasse diagram.
+
+        Keyword parameters:
+        label: str
+            Label for the event (does not need to be unique in a causet)
+        past: Iterable[CausetEvent]
+            Set of past events (that may or may not be linked). This instance 
+            will automatically be added to their future.
+        future: Iterable[CausetEvent]
+            Set of future events (that may or may not be linked). This instance 
+            will automatically be added to their past.
+        coordinates: Iterable[float]
+            Coordinates if the event shall be considered as embedded in a 
+            spacetime region.
+        position: Iterable[float]
+            Coordinate pair of the event in a Hasse diagram if the Hasse 
+            diagram is manually defined.
         '''
-        try:
-            self.Label = kwargs['label']
-        except (KeyError, TypeError, ValueError):
-            self.Label = None
+        self.Label = kwargs.get('label')
         self._prec = set()
-        try:
-            for e in kwargs['past']:
-                self._prec.update(e.PresentOrPast)
-        except (KeyError, TypeError, ValueError):
-            pass
+        for e in kwargs.get('past', []):
+            self._prec.update(e.PresentOrPast)
         self._succ = set()
-        try:
-            for e in kwargs['future']:
-                self._succ.update(e.PresentOrFuture)
-        except (KeyError, TypeError, ValueError):
-            pass
-        try:
-            self._coordinates: np.ndarray = np.array(kwargs['coordinates'])
-        except (KeyError, TypeError, ValueError):
-            pass
-        try:
-            self._position: np.ndarray = np.array(kwargs['position'])
-        except (KeyError, TypeError, ValueError):
-            pass
+        for e in kwargs.get('future', []):
+            self._succ.update(e.PresentOrFuture)
+        self._coordinates = list(kwargs.get('coordinates', []))
+        self._position = list(kwargs.get('position', []))
         # Add this instance to its causal relatives:
         for e in self._prec:
             e._addToFuture(self)
@@ -85,8 +76,8 @@ class CausetEvent(object):
     def _addToPast(self, other: 'CausetEvent') -> bool:
         '''
         Adds an event to the past of this event.
-        It returns False if the event is already in the past, 
-        otherwise it adds the event and returns True.
+        It returns False if the event is already in the past, otherwise it adds 
+        the event and returns True.
         '''
         if other in self._prec:
             return False
@@ -100,8 +91,8 @@ class CausetEvent(object):
     def _addToFuture(self, other: 'CausetEvent') -> bool:
         '''
         Adds an event to the future of this event.
-        It returns False if the event is already in the future, 
-        otherwise it adds the event and returns True.
+        It returns False if the event is already in the future, otherwise it 
+        adds the event and returns True.
         '''
         if other in self._succ:
             return False
@@ -149,8 +140,8 @@ class CausetEvent(object):
 
     def __str__(self):
         if self.Label:
-            return f'#{self.Label}' if isinstance(self.Label, int) \
-                else f'#\'{self.Label}\''
+            return f'#{self.Label}' if isinstance(self.Label, int) else \
+                f'#\'{self.Label}\''
         else:
             return '#Event'
 
@@ -158,8 +149,8 @@ class CausetEvent(object):
         P: str = ', '.join([str(e) for e in self.LinkPast])
         l: str = None
         if self.Label:
-            l = str(self.Label) if isinstance(self.Label, int) \
-                else f'\'{self.Label}\''
+            l = str(self.Label) if isinstance(self.Label, int) else \
+                f'\'{self.Label}\''
         try:
             if P:
                 if l:
@@ -229,8 +220,8 @@ class CausetEvent(object):
     @classmethod
     def isLink(cls, a: 'CausetEvent', b: 'CausetEvent') -> bool:
         '''
-        Tests if event a is linked to event b by intersecting a.Future() 
-        with b.Past().
+        Tests if event a is linked to event b by intersecting a.Future() with 
+        b.Past().
 
         This method is slow, but saves memory. Instead of calling this 
         method many times, faster access is achieved with the call of 
@@ -274,8 +265,8 @@ class CausetEvent(object):
         '''
         Tests if another event is spacelike separated to this event.
         '''
-        return (other is not self) and \
-            (other not in self._prec) and (other not in self._succ)
+        return (other is not self) and (other not in self._prec) and \
+            (other not in self._succ)
 
     @staticmethod
     def LinkCountOf(eventSet: Set['CausetEvent']) -> int:
@@ -284,8 +275,8 @@ class CausetEvent(object):
     @property
     def Past(self) -> Set['CausetEvent']:
         '''
-        Returns a set of events (instances of CausetEvent) that are in the 
-        past of this event.
+        Returns a set of events (instances of CausetEvent) that are in the past 
+        of this event.
         '''
         return self._prec
 
@@ -308,8 +299,8 @@ class CausetEvent(object):
     @property
     def PresentOrPast(self) -> Set['CausetEvent']:
         '''
-        Returns a set of events (instances of CausetEvent) that are in the 
-        past of this event, including this event.
+        Returns a set of events (instances of CausetEvent) that are in the past 
+        of this event, including this event.
         '''
         return self._prec | {self}
 
@@ -323,8 +314,8 @@ class CausetEvent(object):
 
     def Spacelike(self, eventSet: Set['CausetEvent']) -> Set['CausetEvent']:
         '''
-        Returns the subset of events (instances of CausetEvent) of 
-        'eventSet' that are spacelike separated to this event.
+        Returns the subset of events (instances of CausetEvent) of `eventSet` 
+        that are spacelike separated to this event.
         '''
         return eventSet - self.Cone
 
@@ -346,14 +337,14 @@ class CausetEvent(object):
     def ConeCard(self) -> int:
         '''
         Returns the number of past and future events (set cardinality), 
-        inluding this event (present).
+        including this event (present).
         '''
         return len(self._prec) + len(self._succ) + 1
 
     def SpacelikeCard(self, eventSet: Set['CausetEvent']) -> int:
         '''
-        Returns the number of events (instances of CausetEvent) of 
-        'eventSet' that are spacelike separated to this event.
+        Returns the number of events (instances of CausetEvent) of `eventSet` 
+        that are spacelike separated to this event.
         '''
         if self in eventSet:
             return len(eventSet - self._prec - self._succ) - 1
@@ -421,8 +412,8 @@ class CausetEvent(object):
     @property
     def LinkConeCard(self) -> int:
         '''
-        Returns the number of linked past and linked future events 
-        (set cardinality).
+        Returns the number of linked past and linked future events (set 
+        cardinality).
         '''
         try:
             return len(self._lprec) & len(self._lsucc)
@@ -449,8 +440,8 @@ class CausetEvent(object):
 
     def Rank(self, other: 'CausetEvent') -> float:
         '''
-        Returns the rank of event other in the future of this event.
-        If other is not in the future of this event, math.inf is returned.
+        Returns the rank of event other in the future of this event. If `other` 
+        is not in the future of this event, math.inf is returned.
         '''
         if not self <= other:
             return math.inf
@@ -472,25 +463,24 @@ class CausetEvent(object):
             return r
 
     @property
-    def Position(self) -> np.ndarray:
+    def Position(self) -> List[float]:
         '''
-        Returns the coordinates as numpy array for the position in a 
-        Hasse diagram.
+        Returns the coordinates for the position in a Hasse diagram.
         '''
         try:
             return self._position
         except AttributeError:
-            return np.zeros(2)
+            return [0.0, 0.0]
 
     @Position.setter
-    def Position(self, value: np.ndarray) -> None:
+    def Position(self, value: Iterable[float]) -> None:
         '''
-        Sets the coordinates as numpy array for the position in a 
-        Hasse diagram.
+        Sets the coordinates for the position in a Hasse diagram.
         '''
-        if value.shape != (2,):
-            raise ValueError('The position has to be a numpy row ' +
-                             'vectors with two columns.')
+        value = list(value)
+        if len(value) != 2:
+            raise ValueError(
+                'The position has to be an iterable of exactly two values.')
         self._position = value
 
     @property
@@ -500,18 +490,18 @@ class CausetEvent(object):
         '''
         return hasattr(self, '_coordinates')
 
-    def embed(self, coordinates: Iterable[float],
-              reembed: bool = False) -> None:
+    def embed(self, coordinates: Iterable[float], reembed: bool = False) -> \
+            None:
         '''
-        Assigns coordinates to the event. If the event already has 
-        coordinates, an `AttributeError` is raised. To avoid this error 
-        and overwrite the value, use reembed.
+        Assigns coordinates to the event. If the event already has coordinates, 
+        an `AttributeError` is raised. To avoid this error and overwrite the 
+        value, use reembed.
         '''
         if not reembed and self.isEmbedded:
             raise AttributeError(f'The event {self} is already embedded. ' +
                                  'Use the `disembed` method first or use ' +
                                  'the `reembed` flag.')
-        self._coordinates = np.array(coordinates)
+        self._coordinates = list(coordinates)
 
     def disembed(self) -> None:
         '''
@@ -520,15 +510,15 @@ class CausetEvent(object):
         delattr(self, '_coordinates')
 
     @property
-    def Coordinates(self) -> np.ndarray:
+    def Coordinates(self) -> List[float]:
         '''
-        Returns the coordinates as numpy array.
+        Returns the embedding coordinates.
 
         Raises an AttributeError if the event is not embedded.
         '''
-        if self.isEmbedded:
+        try:
             return self._coordinates
-        else:
+        except AttributeError:
             raise AttributeError(f'The event {self} is not embedded. ' +
                                  'Use the `embed` method first.')
 
@@ -538,6 +528,6 @@ class CausetEvent(object):
         Returns the dimension of its coordinates if any, otherwise 0.
         '''
         try:
-            return np.alen(self._coordinates)
+            return len(self._coordinates)
         except AttributeError:
             return 0

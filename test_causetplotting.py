@@ -7,12 +7,12 @@ Created on 24 Oct 2020
 '''
 from __future__ import annotations
 import unittest
-from causets.embeddedcauset import EmbeddedCauset
-from causets.sprinkledcauset import SprinkledCauset
-from causets.spacetimes import BlackHoleSpacetime
-from causets.shapes import CoordinateShape
+from causets.embeddedcauset import EmbeddedCauset  # @UnresolvedImport
+from causets.sprinkledcauset import SprinkledCauset  # @UnresolvedImport
+from causets.spacetimes import BlackHoleSpacetime  # @UnresolvedImport
+from causets.shapes import CoordinateShape  # @UnresolvedImport
 from matplotlib import pyplot as plt
-import causets.causetplotting as cplt
+import causets.causetplotting as cplt  # @UnresolvedImport
 
 
 class TestCausetplotting(unittest.TestCase):

@@ -8,7 +8,7 @@ Created on 04 Oct 2020
 from __future__ import annotations
 import unittest
 import math
-from causets.shapes import CoordinateShape
+from causets.shapes import CoordinateShape  # @UnresolvedImport
 from matplotlib import pyplot as plt
 
 
@@ -54,8 +54,7 @@ class TestCoordinateShape(unittest.TestCase):
         self.assertAlmostEqual(lim[1], 3.0 + 1.6 / 2, 5)
 
     def test_plot(self):
-        S = CoordinateShape(3, 'cube', edge=3.0,
-                            duration=7.0, radius=3.5, hollow=0.3,
+        S = CoordinateShape(3, 'bicone', radius=3.5, hollow=0.7,
                             center=[1.2, 1.0, 0.0])
         dims: List[int] = [1, 2, 0]
         plt.figure(figsize=(8.0, 8.0))
