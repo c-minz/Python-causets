@@ -37,4 +37,6 @@ christoph(dot)minz[at]gmail(dot)com
 # License information
 The source code is published under the BSD 3-Clause License, see [license file](LICENSE.md).
 
-Copyright (c) 2020-2022, Christoph Minz
+Copyright (c) 2020-2023, Christoph Minz
+
+If you use the source code of this repository (with or without modification), please acknowledge it in your project. I appreciate if you add a link to this repository as reference.
