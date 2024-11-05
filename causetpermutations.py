@@ -292,44 +292,54 @@ def permuted_old(C: Causet, eventSet: Set[CausetEvent] = None,
 # new development (started December 2021) below:
 
 
-def findClosedFences(PStart: List[CausetEvent],
-                     FStart: List[CausetEvent],
-                     PAchain: Set[CausetEvent],
-                     FAchain: Set[CausetEvent]) -> \
+def findClosedFences(PStart: List[CausetEvent], FStart: List[CausetEvent],
+                     PAchain: Set[CausetEvent], FAchain: Set[CausetEvent]) -> \
         List[Tuple[List[CausetEvent], List[CausetEvent], int]]:
     '''
-    Searches for causal, closed Fences between events of the 
-    past antichain set `PAchain` and the future antichain set 
-    `FAchain`. All closed Fences have to begin with the events 
-    `PStart` in the past and `FStart` in the future where:
-     `FStart`:  0  1  2         0  1  2  ...
-                |\ |\ |\     or | /| /| /
-                | \| \| \       |/ |/ |/
-     `PStart`:  0  1  2  ...    0  1  2
-    At least one of the lists has to be non-empty and the other 
-    list has to have the same number of elements or exactly one 
-    more or less, so that possible starts are:
-     `FStart`:  0         0    0       0  1    0  1    0  1
-                  or   or | or |\   or | /  or |\ | or | /| ...
-                          |    | \     |/      | \|    |/ |
-     `PStart`:       0    0    0  1    0       0  1    0  1
+    Searches for causal, closed Fences between events of the past antichain set 
+    `PAchain` and the future antichain set `FAchain`. All closed Fences have to 
+    begin with the events as listed in `PStart` (for the past) and in `FStart` 
+    (for the future) where:
+     `FStart`*:  0  1  2  ...      0  1  2  ...
+                 |\ |\ |\      or  | /| /| /
+                 | \| \| \         |/ |/ |/
+     `PStart`*:  0  1  2  ...      0  1  2  ...
+    At least one of the lists `PStart` and `FStart` has to be non-empty and the 
+    other list has to have the same number of elements or exactly one more or 
+    less, depending on the link relations between the events. Possible 
+    combinations are:
+     `FStart`*:  0             0      0         0  1      0  1      0  1
+                    or     or  |  or  |\    or  | /   or  |\ |  or  | /|   ...
+                               |      | \       |/        | \|      |/ |
+     `PStart`*:         0      0      0  1      0         0  1      0  1
 
-    The function returns a list of closed Fences each including 
-    the events `PStart` and `FStart` and any events from the sets 
-    `PAchain` and `FAchain` at most once among all returned values.
-    Examples of closed Fences are:
-     orientation:  -1/1         -1             1                1
-     fence future: 0  1    0  2  1    0  1  3  2    0  1  4  2  3
-                   |\/| or |\/ \/| or |\/ \/ \/| or |\/ \/ \/ \/| ...
-                   |/\|    |/\ /\|    |/\ /\ /\|    |/\ /\ /\ /\|
-     fence past:   0  1    0  1  2    0  3  1  2    0  4  1  3  2
-     return: list of (fence past, fence future, orientation)
+    * Note that the numbers here stand for the list indices of events.
+
+    The function returns a list of 3-tuples. The first two elements of each 
+    3-tuple are lists of events (a past and a future list) that describe a 
+    closed fence. The lists include the events from `PStart` and `FStart` and 
+    any other events from the sets `PAchain` and `FAchain`, respectively. 
+    Additionally, an orientation parameter (int) is returned as the third value 
+    in each tuple.
+    So each tuple has the values: (fence past, fence future, orientation), for 
+    example:
+     orientation:   -1/1           -1            1              -1
+     fence future:  0  1      0  2  1      0  1  2      0  3  1  2
+                    |\/|  or  |\/ \/|  or  |\/ \/|  or  |\/ \/ \/|  or
+                    |/\|      |/\ /\|      |/\ /\|      |/\ /\ /\|
+     fence past:    0  1      0  1  2      0  2  1      0  1  3  2
+
+     orientation:            1                 -1                  1
+     fence future:  0  1  3  2      0  4  1  3  2      0  1  4  2  3
+                    |\/ \/ \/|  or  |\/ \/ \/ \/|  or  |\/ \/ \/ \/|   ...
+                    |/\ /\ /\|      |/\ /\ /\ /\|      |/\ /\ /\ /\|
+     fence past:    0  3  1  2      0  1  4  2  3      0  4  1  3  2
     '''
     # Check if the given fence (start) is valid:
+    PStartCount: int = len(PStart)
+    FStartCount: int = len(FStart)
     PStartSet: Set[CausetEvent] = set(PStart)
     FStartSet: Set[CausetEvent] = set(FStart)
-    PStartCount: int = len(PStartSet)
-    FStartCount: int = len(FStartSet)
     isStartCountsEqual: bool = PStartCount == FStartCount
     isValidStart: bool = (PStartCount > 0 or FStartCount > 0) and \
         PStartCount == len(PStart) and \
@@ -369,7 +379,7 @@ def findClosedFences(PStart: List[CausetEvent],
         return [(PStart, FStart, -1 if isStartShapeN else 1)]
     elif not isStartShapeN and not isStartShapeV:
         return []
-#         raise Exception('The specified lists `PStart` and `FStart` ' +
+#         raise ValueError('The specified lists `PStart` and `FStart` ' +
 #                         'do not describe the start of a fence.')
     # Search and complete the fence start to closed fences:
     PAchain = PAchain - PStartSet
