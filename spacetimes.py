@@ -64,21 +64,21 @@ class Spacetime(object):
         '''
         return self._metricname
 
-    def Parameter(self, key: str) -> Any:
+    def getParameter(self, key: str) -> Any:
         '''
-        Returns a parameter for the shape of the spacetime.
+        Returns a parameter for the spacetime.
         '''
         return self._params[key]
 
-    def DefaultShape(self) -> CoordinateShape:
+    def getDefaultShape(self) -> CoordinateShape:
         '''
         Returns the default coordinate shape of the embedding region in the 
         spacetime.
         '''
         return CoordinateShape(self.Dim, 'cylinder')
 
-    def Causality(self) -> Callable[[np.ndarray, np.ndarray],
-                                    Tuple[bool, bool]]:
+    def getCausality(self) \
+            -> Callable[[np.ndarray, np.ndarray], Tuple[bool, bool]]:
         '''
         Returns a handle to a function to determine if two points x and y are 
         causally connected for the spacetime. 
@@ -86,18 +86,17 @@ class Spacetime(object):
         The function accepts coordinates x and y for two points and returns the 
         causality tuple (x <= y, x > y).
         '''
-        # This is an example implementation for a spacetime.
-        def isCausal(x: np.ndarray,
-                     y: np.ndarray) -> Tuple[bool, bool]:
-            t_delta: float = y[0] - x[0]
-            return (t_delta >= 0.0, t_delta < 0.0)
+        def isCausal(x: np.ndarray, y: np.ndarray) -> Tuple[bool, bool]:
+            # This is an example implementation.
+            delta_t: float = y[0] - x[0]
+            return (delta_t >= 0.0, delta_t < 0.0)
         return isCausal
 
     def _T_slice_sampling(self, t: float, origin: np.ndarray,
                           samplingsize: int = -1) -> np.ndarray:
         '''
-        Internal function for the time sampling array for a cone from `origin` 
-        to time `t`.
+        Internal function for the time sampling array for a cone from 
+        coordinate point `origin` to the time coordinate slice at `t`.
         '''
         samplingsize = samplingsize if samplingsize >= 0 \
             else default_samplingsize
@@ -106,16 +105,18 @@ class Spacetime(object):
     def _XT_slice(self, t: float, origin: np.ndarray, xdim: int,
                   samplingsize: int = -1) -> np.ndarray:
         '''
-        Internal function for the cone plotting from `origin` to time `t` 
-        projected onto a X-T (space-time) plane with space dimension `xdim`. 
+        Internal function for the cone plotting from coordinate point `origin` 
+        to the time coordinate slice at `t` projected onto a X-T (space-time) 
+        plane with space dimension `xdim`. 
         '''
         raise NotImplementedError()
 
     def _XY_slice(self, t: float, origin: np.ndarray, dims: List[int],
                   samplingsize: int = -1) -> np.ndarray:
         '''
-        Internal function for the cone plotting from `origin` to time `t` 
-        projected onto a X-Y (space-space) plane with space dimensions `dims`.
+        Internal function for the cone plotting from coordinate point `origin` 
+        to the time coordinate slice at `t` projected onto a X-Y (space-space) 
+        plane with space dimensions `dims`.
         '''
         raise NotImplementedError()
 
@@ -123,18 +124,19 @@ class Spacetime(object):
                    samplingsize: int = -1) -> \
             Tuple[np.ndarray, np.ndarray, np.ndarray]:
         '''
-        Internal function for the cone plotting from `origin` to time `t` 
-        projected onto a X-Y-Z (space-space) plane with space dimensions `dims`.
+        Internal function for the cone plotting from coordinate point `origin` 
+        to the time coordinate slice at `t` projected onto a X-Y-Z 
+        (space-space) plane with space dimensions `dims`.
         '''
         raise NotImplementedError()
 
     def ConePlotter(self, dims: List[int], plotting_params: Dict[str, Any],
                     timesign: float, axes: Optional[Axes] = None,
                     dynamicAlpha: Optional[Callable[[float], float]] = None,
-                    samplingsize: int = -1) -> \
-            Callable[[np.ndarray, float],
-                     Union[Patch,
-                           List[Tuple[np.ndarray, np.ndarray, np.ndarray]]]]:
+                    samplingsize: int = -1) \
+        -> Callable[
+            [np.ndarray, float],
+            Union[Patch, List[Tuple[np.ndarray, np.ndarray, np.ndarray]]]]:
         '''
         Returns a function handle to plot past (`timesign == -1`) or future 
         (`timesign == 1`) causal cones for the spacetime `self` into the axes 
@@ -278,19 +280,19 @@ class FlatSpacetime(Spacetime):
             self._params['period'] = _periods
 
     def __repr__(self):
-        _period: Tuple[float, ...] = self.Parameter('period')
+        _period: Tuple[float, ...] = self.getParameter('period')
         return f'{self.__class__.__name__}({self._dim}, period={_period})'
 
-    def DefaultShape(self) -> CoordinateShape:
+    def getDefaultShape(self) -> CoordinateShape:
         return CoordinateShape(self.Dim, 'cube') \
-            if self.Parameter('isPeriodic') \
+            if self.getParameter('isPeriodic') \
             else CoordinateShape(self.Dim, 'diamond')
 
-    def Causality(self) -> Callable[[np.ndarray, np.ndarray],
-                                    Tuple[bool, bool]]:
+    def getCausality(self) -> Callable[[np.ndarray, np.ndarray],
+                                       Tuple[bool, bool]]:
         if self.Dim == 1:
-            return super().Causality()
-        if not self.Parameter('isPeriodic'):
+            return super().getCausality()
+        if not self.getParameter('isPeriodic'):
             if self.Dim == 2:
                 def isCausal_flat2D(x: np.ndarray,
                                     y: np.ndarray) -> Tuple[bool, bool]:
@@ -310,7 +312,7 @@ class FlatSpacetime(Spacetime):
                             (t_delta < 0.0) and isCausal)
                 return isCausal_flat
         else:
-            _period: np.ndarray = self.Parameter('period')
+            _period: np.ndarray = self.getParameter('period')
             if self.Dim == 2:
                 def isCausal_flat2Dperiodic(x: np.ndarray,
                                             y: np.ndarray) -> Tuple[bool, bool]:
@@ -359,7 +361,7 @@ class FlatSpacetime(Spacetime):
             timeaxis = dims.index(0)
         except ValueError:
             timeaxis = -1
-        isPeriodic: bool = self.Parameter('isPeriodic')
+        isPeriodic: bool = self.getParameter('isPeriodic')
         shifts: List[np.ndarray]
         k_x: float = 0.0
         x_s: List[float]
@@ -370,18 +372,18 @@ class FlatSpacetime(Spacetime):
             z_s: List[float]
             if isPeriodic:
                 if timeaxis == 0:
-                    k_y = self.Parameter('period')[dims[1] - 1]
-                    k_z = self.Parameter('period')[dims[2] - 1]
+                    k_y = self.getParameter('period')[dims[1] - 1]
+                    k_z = self.getParameter('period')[dims[2] - 1]
                 elif timeaxis == 1:
-                    k_z = self.Parameter('period')[dims[2] - 1]
-                    k_x = self.Parameter('period')[dims[0] - 1]
+                    k_z = self.getParameter('period')[dims[2] - 1]
+                    k_x = self.getParameter('period')[dims[0] - 1]
                 elif timeaxis == 2:
-                    k_x = self.Parameter('period')[dims[0] - 1]
-                    k_y = self.Parameter('period')[dims[1] - 1]
+                    k_x = self.getParameter('period')[dims[0] - 1]
+                    k_y = self.getParameter('period')[dims[1] - 1]
                 else:
-                    k_x = self.Parameter('period')[dims[0] - 1]
-                    k_y = self.Parameter('period')[dims[1] - 1]
-                    k_z = self.Parameter('period')[dims[2] - 1]
+                    k_x = self.getParameter('period')[dims[0] - 1]
+                    k_y = self.getParameter('period')[dims[1] - 1]
+                    k_z = self.getParameter('period')[dims[2] - 1]
                 x_s = [-k_x, 0.0, k_x] if k_x > 0.0 else [0.0]
                 y_s = [-k_y, 0.0, k_y] if k_y > 0.0 else [0.0]
                 z_s = [-k_z, 0.0, k_z] if k_z > 0.0 else [0.0]
@@ -392,12 +394,12 @@ class FlatSpacetime(Spacetime):
         else:
             if isPeriodic:
                 if timeaxis == 0:
-                    k_y = self.Parameter('period')[dims[1] - 1]
+                    k_y = self.getParameter('period')[dims[1] - 1]
                 elif timeaxis == 1:
-                    k_x = self.Parameter('period')[dims[0] - 1]
+                    k_x = self.getParameter('period')[dims[0] - 1]
                 else:
-                    k_x = self.Parameter('period')[dims[0] - 1]
-                    k_y = self.Parameter('period')[dims[1] - 1]
+                    k_x = self.getParameter('period')[dims[0] - 1]
+                    k_y = self.getParameter('period')[dims[1] - 1]
                 x_s = [-k_x, 0.0, k_x] if k_x > 0.0 else [0.0]
                 y_s = [-k_y, 0.0, k_y] if k_y > 0.0 else [0.0]
                 shifts = [np.array([x, y])
@@ -483,8 +485,8 @@ class _dSSpacetime(Spacetime):
         self._alpha = alpha
         self._alpha_sq = alpha**2
 
-    def Causality(self) -> Callable[[np.ndarray, np.ndarray],
-                                    Tuple[bool, bool]]:
+    def getCausality(self) -> Callable[[np.ndarray, np.ndarray],
+                                       Tuple[bool, bool]]:
         raise NotImplementedError()
 
     def _XT_slice2(self, t: float, t0: float,
@@ -540,8 +542,8 @@ class deSitterSpacetime(_dSSpacetime):
             raise ValueError('The cosmological radius ' +
                              'has to be positive.')
 
-    def Causality(self) -> Callable[[np.ndarray, np.ndarray],
-                                    Tuple[bool, bool]]:
+    def getCausality(self) -> Callable[[np.ndarray, np.ndarray],
+                                       Tuple[bool, bool]]:
 
         def isCausal_dS(x: np.ndarray,
                         y: np.ndarray) -> Tuple[bool, bool]:
@@ -635,8 +637,8 @@ class AntideSitterSpacetime(_dSSpacetime):
             raise ValueError('The Anti-de Sitter parameter ' +
                              'has to be positive.')
 
-    def Causality(self) -> Callable[[np.ndarray, np.ndarray],
-                                    Tuple[bool, bool]]:
+    def getCausality(self) -> Callable[[np.ndarray, np.ndarray],
+                                       Tuple[bool, bool]]:
 
         def isCausal_AdS(x: np.ndarray,
                          y: np.ndarray) -> Tuple[bool, bool]:
@@ -745,10 +747,10 @@ class BlackHoleSpacetime(Spacetime):
 
         raise NotImplementedError()
 
-    def Causality(self) -> Callable[[np.ndarray, np.ndarray],
-                                    Tuple[bool, bool]]:
+    def getCausality(self) -> Callable[[np.ndarray, np.ndarray],
+                                       Tuple[bool, bool]]:
         if self.Dim == 1:
-            return super().Causality()
+            return super().getCausality()
         isSchwarzschildMetric: bool = self._metricname == 'Schwarzschild'
 
         if self.Dim == 2:

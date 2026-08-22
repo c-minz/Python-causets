@@ -6,6 +6,7 @@ Created on 05 Oct 2020
 @license: BSD 3-Clause
 '''
 from __future__ import annotations
+from typing import List
 import unittest
 import numpy as np
 from causets.spacetimes import Spacetime  # @UnresolvedImport @UnusedImport

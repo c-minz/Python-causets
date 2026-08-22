@@ -75,11 +75,11 @@ class SprinkledCauset(EmbeddedCauset):
             low: np.ndarray
             high: np.ndarray
             if shape.Name == 'cuboid':
-                low = shape.Center - shape.Parameter('edges') / 2
-                high = shape.Center + shape.Parameter('edges') / 2
+                low = shape.Center - shape.getParameter('edges') / 2
+                high = shape.Center + shape.getParameter('edges') / 2
             else:
-                low = shape.Center - shape.Parameter('edge') / 2
-                high = shape.Center + shape.Parameter('edge') / 2
+                low = shape.Center - shape.getParameter('edge') / 2
+                high = shape.Center + shape.getParameter('edge') / 2
             for i in range(count):
                 coords[i, :] = rng.uniform(low, high)
         elif shape.Name in ('ball', 'cylinder', 'diamond'):
@@ -87,7 +87,7 @@ class SprinkledCauset(EmbeddedCauset):
             isCylindrical: bool = 'cylinder' in shape.Name
             isDiamond: bool = 'diamond' in shape.Name
             d: int = self.Dim
-            b_r: float = shape.Parameter('radius')
+            b_r: float = shape.getParameter('radius')
             if (d == 2) and isDiamond:
                 # pick `count` random coordinate tuples uniformly:
                 uv: np.ndarray = rng.uniform(low=-1.0, high=1.0,
@@ -101,13 +101,13 @@ class SprinkledCauset(EmbeddedCauset):
                 if isCylindrical:
                     # set time coordinate:
                     time_low: float = shape.Center[0] - \
-                        shape.Parameter('duration') / 2
+                        shape.getParameter('duration') / 2
                     time_high: float = shape.Center[0] + \
-                        shape.Parameter('duration') / 2
+                        shape.getParameter('duration') / 2
                     coords[:, 0] = rng.uniform(time_low, time_high,
                                                size=(count,))
                 # pick `count` random coordinate tuples uniformly:
-                r_low: float = shape.Parameter('hollow')**b_d
+                r_low: float = shape.getParameter('hollow')**b_d
                 for i in range(count):
                     # get coordinates on sphere using normal distribution:
                     coord: np.ndarray = rng.standard_normal(size=(b_d,))

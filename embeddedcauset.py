@@ -54,7 +54,7 @@ class EmbeddedCauset(Causet):
         shape: str, CoordinateShape
             (The name of) a coordinate shape that describes the embedding 
             region of the events. 
-            Default: `DefaultShape()` of the spacetime object.
+            Default: `getDefaultShape()` of the spacetime object.
         coordinates: np.ndarray
             List of coordinates, a row of coordinates for event to be created.
         dim: int
@@ -96,7 +96,7 @@ class EmbeddedCauset(Causet):
         if M.Dim != dim:
             self.__raiseDimValueError__('spacetime')
         self._spacetime = M
-        defaultShape = M.DefaultShape()
+        defaultShape = M.getDefaultShape()
         # initialise shape:
         _shape: CoordinateShape
         if shape is None:
@@ -214,7 +214,7 @@ class EmbeddedCauset(Causet):
         embedding in the given spacetime manifold.
         '''
         _iscausal: Callable[[np.ndarray, np.ndarray],
-                            Tuple[bool, bool]] = self._spacetime.Causality()
+                            Tuple[bool, bool]] = self._spacetime.getCausality()
         for e in self._events:
             e._prec = set()
             e._succ = set()

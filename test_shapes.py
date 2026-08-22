@@ -6,6 +6,7 @@ Created on 04 Oct 2020
 @license: BSD 3-Clause
 '''
 from __future__ import annotations
+from typing import List
 import unittest
 import math
 from causets.shapes import CoordinateShape  # @UnresolvedImport
@@ -30,7 +31,7 @@ class TestCoordinateShape(unittest.TestCase):
         cube = CoordinateShape(3, 'cube', edge=3.0, center=[0.0, 1.0, 2.0])
         self.assertEqual(cube.Dim, 3)
         self.assertEqual(cube.Name, 'cube')
-        self.assertEqual(cube.Parameter('edge'), 3.0)
+        self.assertEqual(cube.getParameter('edge'), 3.0)
         self.assertEqual(cube.Volume, 3.0**3)
 
     def test_Dim(self):

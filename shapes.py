@@ -168,7 +168,7 @@ class CoordinateShape(object):
         '''
         return self._center
 
-    def Parameter(self, key: str) -> Any:
+    def getParameter(self, key: str) -> Any:
         '''
         Returns a parameter for the shape of the spacetime region.
         '''
