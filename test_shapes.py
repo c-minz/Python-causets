@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import List
 import unittest
 import math
+import causets.causetplotting as cplt  # @UnresolvedImport
 from causets.shapes import CoordinateShape  # @UnresolvedImport
 from matplotlib import pyplot as plt
 
@@ -59,7 +60,7 @@ class TestCoordinateShape(unittest.TestCase):
                             center=[1.2, 1.0, 0.0])
         dims: List[int] = [1, 2, 0]
         plt.figure(figsize=(8.0, 8.0))
-        S.plot(dims, alpha=0.1, edgecolor='gray')
+        S.plot(cplt.createAxes(len(dims) > 2), dims, alpha=0.1, edgecolor='gray')
         if len(dims) == 3:
             plt.gca().set(xlim=[-5.0, 5.0], ylim=[-5.0, 5.0], zlim=[-5.0, 5.0])
         else:

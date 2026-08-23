@@ -33,12 +33,14 @@ class TestSpacetime(unittest.TestCase):
                            'alpha': 0.3, 'linewidth': 2.5}
         # plot shape and cone:
         plt.figure(figsize=(8.0, 8.0))
-        CoordinateShape(3, 'cylinder', radius=a).plot(dims, alpha=0.05)
+        CoordinateShape(3, 'cylinder', radius=a).plot(plt.gca(), dims, alpha=0.05)
         startpoint: np.ndarray = np.array([0.0, 0.1 * a, -0.6 * a])
         timeslice: float = 1.5
-        plotconeat = spacetime.ConePlotter(dims, plotting_params, 1.0)
+        plotconeat = spacetime.ConePlotter(
+            plt.gca(), dims, plotting_params, 1.0)
         plotconeat(startpoint, timeslice)
-        plt.gca().set(xlim=[-pr, pr], ylim=[-pr, pr])
+        plt.xlim([-pr, pr])
+        plt.ylim([-pr, pr])
         plt.show()
 
 

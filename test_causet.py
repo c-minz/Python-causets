@@ -6,7 +6,7 @@ Created on 20 Jul 2020
 @license: BSD 3-Clause
 '''
 from __future__ import annotations
-from typing import Iterable
+from typing import Iterable, Set
 import unittest
 from causets.causetevent import CausetEvent  # @UnresolvedImport
 from causets.causet import Causet  # @UnresolvedImport

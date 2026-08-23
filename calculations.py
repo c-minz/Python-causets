@@ -74,8 +74,8 @@ def HarmonicNumberFractions(n: int) -> List[Fraction]:
 
 
 def NewtonsMethod(f: Callable[[Any], Any], fprime: Callable[[Any], Any],
-                  x0: float, y: float = 0.0, xmin: float = np.NINF,
-                  xmax: float = np.PINF, default: float = 0.0,
+                  x0: float, y: float = 0.0, xmin: float = -np.inf,
+                  xmax: float = np.inf, default: float = 0.0,
                   precission: float = 1.0e-6, maxIterations: int = 50) -> \
         float:
     '''

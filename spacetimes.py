@@ -10,7 +10,6 @@ from typing import Callable, Tuple, List, Dict, Any, Union, Optional
 import numpy as np
 import math
 from matplotlib import patches
-from matplotlib.pyplot import gca
 from matplotlib.axes import Axes
 from matplotlib.patches import Patch
 from causets.shapes import CoordinateShape  # @UnresolvedImport
@@ -130,8 +129,8 @@ class Spacetime(object):
         '''
         raise NotImplementedError()
 
-    def ConePlotter(self, dims: List[int], plotting_params: Dict[str, Any],
-                    timesign: float, axes: Optional[Axes] = None,
+    def ConePlotter(self, axes: Axes, dims: List[int],
+                    plotting_params: Dict[str, Any], timesign: float,
                     dynamicAlpha: Optional[Callable[[float], float]] = None,
                     samplingsize: int = -1) \
         -> Callable[
@@ -140,8 +139,7 @@ class Spacetime(object):
         '''
         Returns a function handle to plot past (`timesign == -1`) or future 
         (`timesign == 1`) causal cones for the spacetime `self` into the axes 
-        object `axes` (given by gca() by default, with projection='3d' if 
-        len(dims) > 2) up to the coordinate time `timeslice` with plotting 
+        object `axes` up to the coordinate time `timeslice` with plotting 
         parameters given in the dictionary `plotting_params`. The time 
         coordinate goes along the axis with index `timeaxis`. As optional 
         parameter `dynamicAlpha` a function (mapping float to float) can be 
@@ -151,12 +149,6 @@ class Spacetime(object):
         It is a list of 2 or 3 integers, setting up a 2D or 3D plot.
         '''
         is3d: bool = len(dims) == 3
-        _axes: Axes
-        if axes is None:
-            _axes = gca(projection='3d') if is3d else \
-                gca(projection=None)
-        else:
-            _axes = axes
         timeaxis: int
         try:
             timeaxis = dims.index(0)
@@ -221,7 +213,7 @@ class Spacetime(object):
                         X, Y, Z = Z, X, Y
                     elif timeaxis == 1:
                         X, Y, Z = Y, Z, X
-                _axes.plot_surface(X, Y, Z, **plotting_params)
+                axes.plot_surface(X, Y, Z, **plotting_params)
                 return [(X, Y, Z)]
             else:
                 if timeaxis < 0:
@@ -236,7 +228,7 @@ class Spacetime(object):
                 if timeaxis == 0:
                     XY = np.fliplr(XY)
                 p: Patch = patches.Polygon(XY, **plotting_params)
-                _axes.add_patch(p)
+                axes.add_patch(p)
                 return p
 
         return cone
@@ -342,20 +334,14 @@ class FlatSpacetime(Spacetime):
                             (t_delta < 0.0) and isCausal)
                 return isCausal_flatperiodic
 
-    def ConePlotter(self, dims: List[int], plotting_params: Dict[str, Any],
-                    timesign: float, axes: Optional[Axes] = None,
+    def ConePlotter(self, axes: Axes, dims: List[int],
+                    plotting_params: Dict[str, Any], timesign: float,
                     dynamicAlpha: Optional[Callable[[float], float]] = None,
                     samplingsize: int = -1) -> \
             Callable[[np.ndarray, float],
                      Union[Patch,
                            List[Tuple[np.ndarray, np.ndarray, np.ndarray]]]]:
         is3d: bool = len(dims) == 3
-        _axes: Axes
-        if axes is None:
-            _axes = gca(projection='3d') if is3d else \
-                gca(projection=None)
-        else:
-            _axes = axes
         timeaxis: int
         try:
             timeaxis = dims.index(0)
@@ -432,7 +418,7 @@ class FlatSpacetime(Spacetime):
                             origin - s, r, timesign * r,
                             timeaxis, samplingsize)
                 for XYZ in XYZ_list:
-                    _axes.plot_surface(*XYZ, **plotting_params)
+                    axes.plot_surface(*XYZ, **plotting_params)
                 return XYZ_list
             else:
                 XY: np.array = None
@@ -457,7 +443,7 @@ class FlatSpacetime(Spacetime):
                         else np.concatenate(
                             (XY, np.array([[np.nan, np.nan]]), XYpart))
                 p: Patch = patches.Polygon(XY, **plotting_params)
-                _axes.add_patch(p)
+                axes.add_patch(p)
                 return p
 
         return cone

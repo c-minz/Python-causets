@@ -8,6 +8,7 @@ Created on 22 Aug 2020
 from __future__ import annotations
 from typing import List  # @UnusedImport
 import unittest
+import numpy as np
 from fractions import Fraction
 import causets.calculations as calc   # @UnresolvedImport
 

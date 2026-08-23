@@ -6,11 +6,10 @@ Created on 1 Oct 2020
 @license: BSD 3-Clause
 '''
 from __future__ import annotations
-from typing import List, Dict, Tuple, Any, Union, Optional
+from typing import List, Dict, Tuple, Any, Union
 import math
 import numpy as np
 from matplotlib import patches
-from matplotlib.pyplot import gca
 from matplotlib.axes import Axes
 from matplotlib.patches import Patch
 
@@ -248,14 +247,13 @@ class CoordinateShape(object):
         shift: float = self._center[dim]
         return (-l + shift, l + shift)
 
-    def plot(self, dims: List[int], plotAxes: Optional[Axes] = None,
-             **kwargs) -> Union[Patch,
-                                List[Tuple[np.ndarray, np.ndarray, np.ndarray]]]:
+    def plot(self, plotAxes: Axes, dims: List[int], **kwargs) -> \
+            Union[Patch, List[Tuple[np.ndarray, np.ndarray, np.ndarray]]]:
         '''
         Plots a cut through the center of the shape showing `dims` that 
         can be a list of 2 integers (for a 2D plot) or 3 integers (for a 3D 
         plot). The argument `plotAxes` specifies the plot axes object to be 
-        used (by default the current axes of `matplotlib`). 
+        used. 
         As optional keyword arguments, the plotting options can be specified 
         that will overwrite the defaults that are for 2D:
         {'edgecolor': 'black', 'facecolor': 'black', 'alpha': 0.05}
@@ -267,9 +265,6 @@ class CoordinateShape(object):
         returned for a 3D plot.
         '''
         is3d: bool = len(dims) == 3
-        if plotAxes is None:
-            plotAxes = gca(projection='3d') if is3d else \
-                gca(projection=None)
         if is3d:
             plotoptions = {'edgecolor': None,
                            'color': 'black',
