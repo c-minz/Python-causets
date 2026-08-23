@@ -82,13 +82,13 @@ class SprinkledCauset(EmbeddedCauset):
                 high = shape.Center + shape.getParameter('edge') / 2
             for i in range(count):
                 coords[i, :] = rng.uniform(low, high)
-        elif shape.Name in ('ball', 'cylinder', 'diamond'):
+        elif shape.Name in ('ball', 'cylinder', 'bicone'):
             # Create circle based sprinkle:
             isCylindrical: bool = 'cylinder' in shape.Name
-            isDiamond: bool = 'diamond' in shape.Name
+            isBicone: bool = 'bicone' in shape.Name
             d: int = self.Dim
             b_r: float = shape.getParameter('radius')
-            if (d == 2) and isDiamond:
+            if (d == 2) and isBicone:
                 # pick `count` random coordinate tuples uniformly:
                 uv: np.ndarray = rng.uniform(low=-1.0, high=1.0,
                                              size=(count, 2))
@@ -114,7 +114,7 @@ class SprinkledCauset(EmbeddedCauset):
                     r: float = np.sqrt(sum(np.square(coord)))
                     r_scaling: float
                     r_scaling = rng.uniform(low=r_low)**(1.0 / b_d)
-                    if isDiamond:
+                    if isBicone:
                         # set time coordinate:
                         h_squeeze: float = rng.uniform()**(1.0 / d)
                         h_sign: float = np.sign(
