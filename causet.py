@@ -753,6 +753,12 @@ class Causet(object):
                 if (n >= _first) and (n <= last):
                     newEventSet.add(b)
         return newEventSet
+    
+    def getHeight(self) -> int:
+        '''
+        Returns the number of layers in this instance.
+        '''
+        return max(Causet.LayerNumbers(list(self._events))) + 1
 
     @staticmethod
     def LayerNumbers(eventList: List[CausetEvent], reverse: bool = False) -> \
