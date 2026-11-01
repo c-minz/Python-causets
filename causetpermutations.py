@@ -2,6 +2,8 @@
 '''
 Created on 25 Oct 2020
 
+This module is largely incomplete.
+
 @author: Christoph Minz
 @license: BSD 3-Clause
 '''
@@ -39,7 +41,7 @@ def AntichainPermutations_old(C: Causet, eventSet: Set[CausetEvent],
     '''
     c: int = len(eventSet)
     events: np.ndarray = np.array(
-        C.sortedByLabels(eventSet), dtype=CausetEvent)
+        C.sortByLabels(eventSet), dtype=CausetEvent)
     # create distance matrix:
     D: np.ndarray = np.zeros((c, c), dtype=int)
     for i in range(c):

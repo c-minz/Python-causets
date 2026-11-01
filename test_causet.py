@@ -6,7 +6,7 @@ Created on 20 Jul 2020
 @license: BSD 3-Clause
 '''
 from __future__ import annotations
-from typing import Iterable, Set
+from typing import Iterable, List, Set
 import unittest
 from causets.causetevent import CausetEvent  # @UnresolvedImport
 from causets.causet import Causet  # @UnresolvedImport
@@ -121,6 +121,24 @@ class TestCauset(CausetTestCase):
         self.assertCauset(S, 10, False, False)
         self.assertEqual(len(S.PastInf), 5)
         self.assertEqual(len(S.FutureInf), 1)
+    
+    def test_getHeight(self):
+        S: Causet = Causet.merge(
+            Causet.merge(Causet.NewChain(1), Causet.NewAntichain(5)),
+            Causet.NewChain(1)
+        )
+        self.assertEqual(S.getHeight(), 3)
+    
+    def test_layered(self):
+        S: Causet = Causet.merge(
+            Causet.merge(Causet.NewAntichain(1), Causet.NewAntichain(5)),
+            Causet.merge(Causet.NewAntichain(3), Causet.NewAntichain(2))
+        )
+        layered: List[Set[CausetEvent]] = S.layered()
+        self.assertEqual(len(layered[0]), 1)
+        self.assertEqual(len(layered[1]), 5)
+        self.assertEqual(len(layered[2]), 3)
+        self.assertEqual(len(layered[3]), 2)
 
     def test_Paths(self):
         S: Causet = Causet.NewAntichain(5)

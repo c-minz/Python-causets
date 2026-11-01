@@ -438,29 +438,28 @@ class CausetEvent(object):
             e._lsucc = self._lsucc.copy()
         return e
 
-    def Rank(self, other: 'CausetEvent') -> float:
+    def Rank(self, other: 'CausetEvent') -> int:
         '''
-        Returns the rank of event other in the future of this event. If `other` 
-        is not in the future of this event, math.inf is returned.
+        Returns the rank of event `other` in the future of this event. If 
+        `other` is not in the future of this event, -1 is returned.
         '''
         if not self <= other:
-            return math.inf
+            return -1
         elif self == other:
-            return 0.0
+            return 0
         elif self.isFutureLink(other):
-            return 1.0
-        else:
-            a_linked = self.LinkFuture
-            b_linked = other.LinkPast
-            if a_linked & b_linked:
-                return 2.0
-            r = math.inf
-            for a_succ in a_linked:
-                for b_prec in b_linked:
-                    r = min(r, a_succ.Rank(b_prec) + 2.0)
-                    if r == 3.0:
-                        return 3.0
-            return r
+            return 1
+        a_linked = self.LinkFuture
+        b_linked = other.LinkPast
+        if a_linked & b_linked:
+            return 2
+        r: int = self.FutureCard  # upper bound
+        for a_succ in a_linked:
+            for b_prec in b_linked:
+                r = min(r, a_succ.Rank(b_prec) + 2)
+                if r == 3:
+                    return 3
+        return r
 
     @property
     def Position(self) -> List[float]:

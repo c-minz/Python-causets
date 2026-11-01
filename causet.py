@@ -714,45 +714,6 @@ class Causet(object):
                 if (sizeList[i] == size) and not (e.Cone & eventSet):
                     eventSet.add(e)
         return eventSet
-
-    @staticmethod
-    def Layers(eventSet: Set[CausetEvent], first: int, last: int = None) -> \
-            Set[CausetEvent]:
-        '''
-        Returns the layers of `eventSet` with layer number from `first` to 
-        `last`. If `last` is None (default), `last` is set to `first`.
-        Past layers have a negative layer number, 0 stands for the present 
-        layer (eventSet itself), and future layer have a positive layer number.
-        '''
-        if last is None:
-            last = first
-        if (len(eventSet) == 0) or (first > last):
-            return set()
-        newEventSet: Set[CausetEvent] = set()
-        n: int
-        if first <= 0:
-            _last: int = min(0, last)
-            for a in Causet.PastOf(eventSet, includePresent=True):
-                setB: Set[CausetEvent] = a.Future & eventSet
-                if setB:
-                    n = -(max(Causet.IntervalCard(a, b)
-                              for b in setB) - 1)
-                else:
-                    n = 0
-                if (n >= first) and (n <= _last):
-                    newEventSet.add(a)
-        if last > 0:
-            _first: int = max(first, 0)
-            for b in Causet.FutureOf(eventSet, includePresent=True):
-                setA: Set[CausetEvent] = b.Past & eventSet
-                if setA:
-                    n = max(Causet.IntervalCard(a, b)
-                            for a in setA) - 1
-                else:
-                    n = 0
-                if (n >= _first) and (n <= last):
-                    newEventSet.add(b)
-        return newEventSet
     
     def getHeight(self) -> int:
         '''
@@ -766,63 +727,54 @@ class Causet(object):
         '''
         Returns a list of layer numbers for the list of events `eventList`. 
         If not `reverse` (default), the layer numbers are non-negative and 
-        increasing from the past infinity of `eventList`. If reverse, the layer 
-        numbers are non-positive and decreasing from the future infinity of 
+        increasing from the past infinity of `eventList`. If `reverse`, the 
+        layer numbers are non-positive, decreasing from the future infinity of 
         `eventList`. 
         '''
-        eventSet: Set[CausetEvent] = set(eventList)
-        if len(eventSet) == 0:
-            return []
-        lnums: List[int] = [0] * len(eventList)
+        sortedEvents: List[CausetEvent] = \
+            Causet.sortByCausality(set(eventList), reverse)
+        layerNumbers: List[int] = [0] * len(sortedEvents)
         if reverse:
-            for i, a in enumerate(eventList):
-                setB: Set[CausetEvent] = a.Future & eventSet
-                if setB:
-                    lnums[i] = -(max(Causet.IntervalCard(a, b)
-                                     for b in (a.Future & eventSet)) - 1)
+            for a in sortedEvents:
+                nextLayerNumber = layerNumbers[sortedEvents.index(a)] - 1
+                for b in a.LinkPast:
+                    i = sortedEvents.index(b)
+                    layerNumbers[i] = min(layerNumbers[i], nextLayerNumber)
         else:
-            for i, b in enumerate(eventList):
-                setA: Set[CausetEvent] = b.Past & eventSet
-                if setA:
-                    lnums[i] = max(Causet.IntervalCard(a, b)
-                                   for a in (b.Past & eventSet)) - 1
-        return lnums
+            for a in sortedEvents:
+                nextLayerNumber = layerNumbers[sortedEvents.index(a)] + 1
+                for b in a.LinkFuture:
+                    i = sortedEvents.index(b)
+                    layerNumbers[i] = max(layerNumbers[i], nextLayerNumber)
+        return [layerNumbers[sortedEvents.index(e)] for e in eventList]
 
     @staticmethod
-    def Ranks(eventSet: Set[CausetEvent], first: int,
-              last: Optional[int] = None) -> Set[CausetEvent]:
+    def extendLayers(eventSet: Set[CausetEvent], first: int, last: int) -> \
+            Set[CausetEvent]:
         '''
-        Returns the ranks of `eventSet` with rank number from `first` to 
-        `last`. If `last` is None (default), `last` is set to `first`. Past 
-        ranks have a negative rank number, 0 stands for the present rank 
-        (`eventSet` itself), and future ranks have a positive rank number.
+        Returns the layers of `eventSet` with layer number from `first` to 
+        `last`.
+        Past layers have a negative layer number, 0 stands for the present 
+        layer (eventSet itself), and future layer have a positive layer number.
         '''
-        if last is None:
-            last = first
         if (len(eventSet) == 0) or (first > last):
             return set()
-        newEventSet: Set[CausetEvent] = set()
+        eventList: List[CausetEvent]
+        layerNumbers: List[int]
+        extendedEventSet: Set[CausetEvent] = set()
         if first <= 0:
-            _last: int = min(0, last)
-            for a in Causet.PastOf(eventSet, includePresent=True):
-                setB: Set[CausetEvent] = a.Future & eventSet
-                if setB:
-                    n = -max(int(a.Rank(b)) for b in setB)
-                else:
-                    n = 0
-                if (n >= first) and (n <= _last):
-                    newEventSet.add(a)
+            eventList = list(Causet.PastOf(eventSet, includePresent=True))
+            layerNumbers = Causet.LayerNumbers(eventList, True)
+            for e, l in zip(eventList, layerNumbers):
+                if (l >= first) and (l <= last):
+                    extendedEventSet.add(e)
         if last > 0:
-            _first: int = max(first, 0)
-            for b in Causet.FutureOf(eventSet, includePresent=True):
-                setA: Set[CausetEvent] = b.Past & eventSet
-                if setA:
-                    n = max(int(a.Rank(b)) for a in setA)
-                else:
-                    n = 0
-                if (n >= _first) and (n <= last):
-                    newEventSet.add(b)
-        return newEventSet
+            eventList = list(Causet.FutureOf(eventSet, includePresent=True))
+            layerNumbers = Causet.LayerNumbers(eventList)
+            for e, l in zip(eventList, layerNumbers):
+                if (l >= first) and (l <= last):
+                    extendedEventSet.add(e)
+        return extendedEventSet
 
     @staticmethod
     def RankNumbers(eventList: List[CausetEvent], reverse: bool = False) -> \
@@ -837,18 +789,18 @@ class Causet(object):
         eventSet: Set[CausetEvent] = set(eventList)
         if len(eventSet) == 0:
             return []
-        lnums: List[int] = [0] * len(eventList)
+        rankNumbers: List[int] = [0] * len(eventList)
         if reverse:
             for i, a in enumerate(eventList):
                 setB: Set[CausetEvent] = a.Future & eventSet
                 if setB:
-                    lnums[i] = -max(int(a.Rank(b)) for b in setB)
+                    rankNumbers[i] = -max(a.Rank(b) for b in setB)
         else:
             for i, b in enumerate(eventList):
                 setA: Set[CausetEvent] = b.Past & eventSet
                 if setA:
-                    lnums[i] = max(int(a.Rank(b)) for a in setA)
-        return lnums
+                    rankNumbers[i] = max(a.Rank(b) for a in setA)
+        return rankNumbers
 
     @staticmethod
     def Paths(a: CausetEvent, b: CausetEvent,
@@ -1026,7 +978,7 @@ class Causet(object):
         D: np.ndarray = np.zeros((l, l), dtype=int)
         ac_set: Set[CausetEvent] = set(antichain)
         slice_set: Set[CausetEvent] = ac_set
-        thickerslice_set = self.Layers(slice_set, -1, 1)
+        thickerslice_set = self.extendLayers(slice_set, -1, 1)
         d: int
         while len(slice_set) < len(thickerslice_set):
             slice_set = thickerslice_set
@@ -1055,7 +1007,7 @@ class Causet(object):
                             disconnected_count -= 2
                             if disconnected_count == 0:
                                 return D
-            thickerslice_set = self.Layers(slice_set, -1, 1)
+            thickerslice_set = self.extendLayers(slice_set, -1, 1)
         return D
 
     def Antipaths(self, a: CausetEvent, b: CausetEvent,
@@ -1131,35 +1083,38 @@ class Causet(object):
         is None`) consists of disjoint pieces, otherwise False.
         '''
         return len(self.disjoint(eventSet)) > 1
-
-    def sortedByLabels(self, eventSet: Optional[Set[CausetEvent]] = None,
-                       reverse: bool = False) -> List[CausetEvent]:
+    
+    @staticmethod
+    def sortByLabels(eventSet: Set[CausetEvent]=None,
+                     reverse: bool=False) -> List[CausetEvent]:
         '''
-        Returns the causet events `eventSet` (if None than the entire 
-        causet) as a list sorted ascending (default) or descending by 
-        their labels.
+        Returns the causet events `eventSet` as a list partially sorted 
+        ascending (default) or descending by their labels.
         '''
-        if eventSet is None:
-            eventSet = self._events
         unsortedList: List[CausetEvent] = list(eventSet)
-        sortedIndex: np.ndarray = \
-            np.argsort([e.Label for e in unsortedList])
-        sortedList: List[CausetEvent] = \
-            [unsortedList[i] for i in sortedIndex]
+        sortedIndex: np.ndarray = np.argsort([e.Label for e in unsortedList])
+        sortedList: List[CausetEvent] = [unsortedList[i] for i in sortedIndex]
         if reverse:
             sortedList.reverse()
         return sortedList
 
-    def sortedByCausality(self, eventSet: Optional[Set[CausetEvent]] = None,
-                          reverse: bool = False) -> List[CausetEvent]:
+    def sortedByLabels(self, reverse: bool=False) -> List[CausetEvent]:
         '''
-        Returns the causet events `eventSet` (if None than the entire causet) 
-        as a list sorted ascending (default) or descending by their causal 
-        relations.
+        Returns a list of the events in this causet, partially sorted ascending 
+        (default) or descending by their labels.
         '''
-        if eventSet is None:
-            eventSet = self._events
-        eList: List[CausetEvent] = self.sortedByLabels(eventSet, reverse=True)
+        return Causet.sortByLabels(self._events, reverse)
+    
+    @staticmethod
+    def sortByCausality(eventSet: Optional[Set[CausetEvent]]=None,
+                        reverse: bool=False) -> List[CausetEvent]:
+        '''
+        Returns the causet events `eventSet` as a list partially sorted 
+        ascending (default) or descending by their causal relations. In the 
+        ascending case, the returned list is a order-preserving ("natural") 
+        labelling.
+        '''
+        eList: List[CausetEvent] = Causet.sortByLabels(eventSet, reverse=False)
         c: int = len(eList)
         for i in range(c):
             for j in range(i):
@@ -1168,6 +1123,15 @@ class Causet(object):
         if reverse:
             eList.reverse()
         return eList
+
+    def sortedByCausality(self, reverse: bool=False) -> List[CausetEvent]:
+        '''
+        Returns a list of the events in this causet, partially sorted 
+        ascending (default) or descending by their causal relations. In the 
+        ascending case, the returned list is a order-preserving ("natural") 
+        labelling.
+        '''
+        return Causet.sortByCausality(self._events, reverse)
 
     def layered(self, eventSet: Optional[Set[CausetEvent]] = None,
                 reverse: bool = False) -> List[Set[CausetEvent]]:
@@ -1178,14 +1142,12 @@ class Causet(object):
         '''
         if eventSet is None:
             eventSet = self._events
-        layer_step: int = -1 if reverse else 1
-        layer: Set[CausetEvent]
-        if reverse:
-            layer = self.FutureInfOf(eventSet)
-        else:
-            layer = self.PastInfOf(eventSet)
-        layeredList: List[Set[CausetEvent]] = []
-        while layer:
-            layeredList.append(layer)
-            layer = self.Layers(layer, layer_step) & eventSet
-        return layeredList
+        eventList: List[CausetEvent] = self.sortByCausality(eventSet)
+        layerNumbers: List[int] = self.LayerNumbers(eventList, reverse)
+        layerLimit: int = min(layerNumbers) - 1 if reverse else \
+            max(layerNumbers) + 1
+        layerStep: int = -1 if reverse else 1
+        return [
+            {e for i, e in enumerate(eventList) if layerNumbers[i] == l}
+            for l in range(0, layerLimit, layerStep)
+        ]

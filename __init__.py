@@ -14,5 +14,3 @@ from .sprinkledcauset import *
 # Plot modules:
 from .colorschemes import *
 from .causetplotting import *
-# Permutations (2D-orders and antichain reconstruction):
-from .causetpermutations import *
