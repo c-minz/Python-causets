@@ -20,7 +20,8 @@ class TestSprinkledCauset(CausetTestCase):
         pass
 
     def test_init(self):
-        C = SprinkledCauset(card=10, dim=2, shape='cube')
+        C = SprinkledCauset(card=10, dim=2, shape='cube',
+                            rng=12345678900987654321)
         self.assertEqual(C.Dim, 2)
         self.assertEqual(C.Shape.Name, 'cube')
         a = C.Shape.Center
