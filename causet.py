@@ -484,63 +484,59 @@ class Causet(object):
         return True
 
     @property
-    def PastInf(self) -> Set[CausetEvent]:
+    def Min(self) -> Set[CausetEvent]:
         '''
-        Returns the set of events without any past event (past infinity).
+        Returns the set of minimal events (with empty past, or past infinity).
         '''
         return {e for e in self._events if e.PastCard == 0}
 
     @property
-    def FutureInf(self) -> Set[CausetEvent]:
+    def Max(self) -> Set[CausetEvent]:
         '''
-        Returns the set of events without any future event (future 
+        Returns the set of maximal events (with empty future, or future 
         infinity).
         '''
         return {e for e in self._events if e.FutureCard == 0}
 
     @property
-    def PastInfCard(self) -> int:
+    def MinCard(self) -> int:
         '''
-        Returns the number of events without any past event (past infinity).
+        Returns the number of minimal events.
         '''
         return sum(1 for e in self._events if e.PastCard == 0)
 
     @property
-    def FutureInfCard(self) -> int:
+    def MaxCard(self) -> int:
         '''
-        Returns the number of event without any future event (future infinity).
+        Returns the number of maximal events.
         '''
         return sum(1 for e in self._events if e.FutureCard == 0)
 
     @staticmethod
-    def PastInfOf(eventSet: Set[CausetEvent]) -> Set[CausetEvent]:
+    def MinOf(eventSet: Set[CausetEvent]) -> Set[CausetEvent]:
         '''
-        Returns a subset of event without any past event (past infinity) in 
-        `eventSet`.
+        Returns the subset of minimal events of `eventSet`.
         '''
         return {e for e in eventSet if not (e.Past & eventSet)}
-
+    
     @staticmethod
-    def FutureInfOf(eventSet: Set[CausetEvent]) -> Set[CausetEvent]:
+    def MaxOf(eventSet: Set[CausetEvent]) -> Set[CausetEvent]:
         '''
-        Returns a subset of event without any future event (future infinity) in 
-        `eventSet`.
+        Returns the subset of maximal events of `eventSet`.
         '''
         return {e for e in eventSet if not (e.Future & eventSet)}
 
     @staticmethod
-    def PastInfCardOf(eventSet: Set[CausetEvent]) -> int:
+    def MinCardOf(eventSet: Set[CausetEvent]) -> int:
         '''
-        Returns the number of event without any past event (past infinity) in 
-        `eventSet`.
+        Returns the number of minimal events of `eventSet`.
         '''
         return sum(1 for e in eventSet if not (e.Past & eventSet))
 
     @staticmethod
-    def FutureInfCardOf(eventSet: Set[CausetEvent]) -> int:
+    def MaxCardOf(eventSet: Set[CausetEvent]) -> int:
         '''
-        Returns the number of event without any future event (future infinity) 
-        in `eventSet`.
+        Returns the number of maximal events of `eventSet`.
         '''
         return sum(1 for e in eventSet if not (e.Future & eventSet))
 
@@ -1148,6 +1144,6 @@ class Causet(object):
             max(layerNumbers) + 1
         layerStep: int = -1 if reverse else 1
         return [
-            {e for i, e in enumerate(eventList) if layerNumbers[i] == l}
+            {e for e, el in zip(eventList, layerNumbers) if el == l}
             for l in range(0, layerLimit, layerStep)
         ]

@@ -52,7 +52,7 @@ class TestCausetplotting(unittest.TestCase):
         C: SprinkledCauset = SprinkledCauset(card=200,
                                              spacetime=BlackHoleSpacetime(2))
         dims = [1, 0]
-        e = C.PastInf.copy().pop()
+        e = C.Min.copy().pop()
         events_Cone = e.Cone
         plotAxes = cplt.createAxes()
         cplt.plot(plotAxes, C, dims=dims,

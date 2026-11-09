@@ -448,8 +448,8 @@ def __perm_layeredsubset(C: Causet, E: Set[CausetEvent], s: int) -> \
     # placeholder code:
     L: List[CausetEvent]  # events sorted by u-coordinates
     P: List[int]  # permutation for v-coordinates
-    PInf: Set[CausetEvent] = C.PastInfOf(E)
-    FInf: Set[CausetEvent] = C.FutureInfOf(E)
+    PInf: Set[CausetEvent] = C.MinOf(E)
+    FInf: Set[CausetEvent] = C.MaxOf(E)
     # 1. Start with one past infinity event such that the intersection
     # of its future and the future infinity is maximal.
     PInf_sorted: List[CausetEvent] = list(PInf)
@@ -484,19 +484,19 @@ def __perm_jointsubset(C: Causet, E: Set[CausetEvent],
     L: List[CausetEvent] = []        # events sorted by u-coordinates
     P: List[int] = []                # permutation for v-coordinates
     E_count: int = len(E)
-    Inf: Set[CausetEvent] = C.PastInfOf(E)
+    Inf: Set[CausetEvent] = C.MinOf(E)
     e: CausetEvent
     while len(Inf) == 1:
         e = Inf.pop()
         L_start.append(e)
         E.remove(e)
-        Inf = C.PastInfOf(E)
-    Inf = C.FutureInfOf(E)
+        Inf = C.MinOf(E)
+    Inf = C.MaxOf(E)
     while len(Inf) == 1:
         e = Inf.pop()
         L_end.insert(0, e)
         E.remove(e)
-        Inf = C.FutureInfOf(E)
+        Inf = C.MaxOf(E)
     start_len: int = len(L_start)
     end_len: int = len(L_end)
     central_subsets = C.disjoint(E)

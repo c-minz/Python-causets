@@ -119,8 +119,8 @@ class TestCauset(CausetTestCase):
         S_chain: Causet = Causet.NewChain(5)
         S: Causet = Causet.merge(S_antichain, S_chain)
         self.assertCauset(S, 10, False, False)
-        self.assertEqual(len(S.PastInf), 5)
-        self.assertEqual(len(S.FutureInf), 1)
+        self.assertEqual(len(S.Min), 5)
+        self.assertEqual(len(S.Max), 1)
     
     def test_getHeight(self):
         S: Causet = Causet.merge(
@@ -167,7 +167,7 @@ class TestCauset(CausetTestCase):
         between1: Set[CausetEvent] = S.findAll(2, 6)
         between2: Set[CausetEvent] = S.findAll(3, 5)
         last: CausetEvent = S.find(4)
-        for ap in S.Antipaths(first, last, along=S.PastInf):
+        for ap in S.Antipaths(first, last, along=S.Min):
             i += 1
             self.assertEqual(len(ap), 4)
             self.assertEqual(ap[0], first)
@@ -176,7 +176,7 @@ class TestCauset(CausetTestCase):
             self.assertEqual(ap[3], last)
         self.assertEqual(i, 2)
         i = 0
-        for ap in S.Antipaths(first, first, along=S.PastInf):
+        for ap in S.Antipaths(first, first, along=S.Min):
             i += 1
             self.assertEqual(len(ap), 1)
             self.assertEqual(ap[0], first)
